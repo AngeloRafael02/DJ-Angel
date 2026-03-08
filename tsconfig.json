@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",                                  /* Latest JS features */
+    "module": "NodeNext",                                /* Required for modern Node.js ESM */
+    "moduleResolution": "NodeNext",
+    
+    "rootDir": "./src",                                  /* Where your .ts files live */
+    "outDir": "./dist",                                  /* Where the compiled .js goes */
+    "resolveJsonModule": true,                           /* To import your Google Service Account JSON */
+    
+    "strict": true,                                      /* Enable all strict type-checking */
+    "noImplicitAny": true,                               /* Ensure every variable has a type */
+    "skipLibCheck": true,                                /* Skip type checking of declaration files (.d.ts) */
+    
+    "esModuleInterop": true,                             /* Emits extra JS to ease imports from non-ESM modules */
+    "forceConsistentCasingInFileNames": true             /* Help prevent issues when deploying to Linux servers */
+  },
+  "include": ["src/**/*"],                               /* Include everything in the src folder */
+  "exclude": ["node_modules"]                            /* Don't try to compile your libraries */
+}
