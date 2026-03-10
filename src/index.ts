@@ -1,10 +1,12 @@
-import { Client, GatewayIntentBits, Events } from 'discord.js';
-import * as dotenv from 'dotenv';
+import { Client, Events, GatewayIntentBits } from "discord.js";
+import * as dotenv from "dotenv";
+import { loadCommands } from "./loadCommands.js";
 
-// Load environment variables from .env file
 dotenv.config();
 
-// Initialize the Discord Client
+// Load all command files from the commands folder
+const commands = await loadCommands();
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,           // Required to interact with servers
@@ -15,16 +17,49 @@ const client = new Client({
 });
 
 // Event: When the bot is ready
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
   console.log(`✅ DJ Bot is online! Logged in as ${readyClient.user.tag}`);
+
+  try {
+    for (const cmd of commands) {
+      if (!readyClient.application?.commands.cache.find((c) => c.name === cmd.data.name)) {
+        await readyClient.application?.commands.create(cmd.data);
+        console.log(`✅ Registered /${cmd.data.name} command`);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to register slash commands:", error);
+  }
 });
 
-// Basic Error Handling
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = commands.find((c) => c.data.name === interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(`Error handling /${interaction.commandName} command:`, error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        content: "There was an error while executing this command.",
+        ephemeral: true,
+      });
+    } else {
+      await interaction.reply({
+        content: "There was an error while executing this command.",
+        ephemeral: true,
+      });
+    }
+  }
+});
+
 client.on(Events.Error, (error) => {
   console.error('Discord Client Error:', error);
 });
 
-// Login using the token from your .env file
 const TOKEN = process.env.DISCORD_TOKEN;
 
 if (!TOKEN) {
