@@ -15,12 +15,11 @@ import { setPlaylistFolderId } from "../services/playlist-store.js";
  */
 const extractFolderIdFromUrl = (url: string): string | null => {
   const trimmed = url.trim();
-  // drive.google.com/drive/folders/ID
   const foldersMatch = trimmed.match(
     /drive\.google\.com\/drive\/folders\/([a-zA-Z0-9_-]+)/
   );
   if (foldersMatch) return foldersMatch[1];
-  // drive.google.com/open?id=ID
+  
   const openMatch = trimmed.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
   if (openMatch) return openMatch[1];
   return null;
