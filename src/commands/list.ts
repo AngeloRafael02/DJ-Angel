@@ -1,22 +1,21 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { Command } from "../interfaces.js";
 import { drive } from "../services/drive-service.js";
-
-// For now, this is a static variable as requested.
-// This is the ID found in the URL: drive.google.com/drive/folders/FOLDER_ID
-const STATIC_FOLDER_ID = "1jFmAf8WOwd9Ph74Ql8jSpBf_7KZdG73w";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../services/playlist-store.js";
 
 const listCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("list")
     .setDescription("Lists all MP3 files available in the Google Drive library"),
-  
+
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply();
 
+    const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
+
     try {
       const response = await drive.files.list({
-        q: `'${STATIC_FOLDER_ID}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+        q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
         fields: "files(id, name)",
         orderBy: "name",
       });
