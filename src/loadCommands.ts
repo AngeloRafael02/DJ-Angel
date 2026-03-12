@@ -1,5 +1,5 @@
 import { readdirSync } from "fs";
-import { dirname, join } from "path";
+import { dirname, join, relative } from "path";
 import { pathToFileURL } from "url";
 import { fileURLToPath } from "url";
 import type { Command } from "./interfaces.js";
@@ -13,15 +13,32 @@ const __dirname = dirname(__filename);
  */
 export async function loadCommands(): Promise<Command[]> {
   const commandsDir = join(__dirname, "commands");
-  const files = readdirSync(commandsDir).filter(
-    (f) =>
-      (f.endsWith(".ts") || f.endsWith(".js")) && !f.endsWith(".d.ts")
-  );
+  const files: string[] = [];
+
+  const walk = (dir: string) => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (
+        (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) &&
+        !entry.name.endsWith(".d.ts")
+      ) {
+        files.push(fullPath);
+      }
+    }
+  };
+
+  walk(commandsDir);
 
   const commands: Command[] = [];
 
   for (const file of files) {
-    const modulePath = pathToFileURL(join(commandsDir, file)).href;
+    const modulePath = pathToFileURL(file).href;
+    const displayPath = relative(commandsDir, file);
 
     try {
       const mod = await import(modulePath);
@@ -29,11 +46,11 @@ export async function loadCommands(): Promise<Command[]> {
         commands.push(mod.default);
       } else {
         console.warn(
-          `[loadCommands] ${file}: missing default Command export, skipped`
+          `[loadCommands] ${displayPath}: missing default Command export, skipped`
         );
       }
     } catch (err) {
-      console.error(`[loadCommands] Failed to load ${file}:`, err);
+      console.error(`[loadCommands] Failed to load ${displayPath}:`, err);
     }
   }
 
