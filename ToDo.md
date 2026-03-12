@@ -1,12 +1,14 @@
 # To Do
 
 ## Unfinished
-- limit /list result to 10, implelment pagination by adding a optinal page argument
+- limit /list result to 10, implelment pagination by adding a optinal page argument - DONE
+- configure list to show all even if there are folder with songs inside (use recursive)
 - '/play <song-name>' commands to make bot play a song (one Song for now)
-- modify '/play <song-name>'  to add the soong on queue
+- create a queue system
+- modify '/play <song-name>' to add the song on queue
+- '/queue' command to list queue (ephemeral) + pagination
 - '/next' command to get to the next song in the queue
-- '/prev' command to get previous song, play it back
-- add 'all' optonal flag to '/play' command to automatically put all songs in a queue (clears queue first if single songs were added)
+- add 'all' optonal flag to '/play' command to automatically put all songs in a queue (add songs that are bnot in queue yet)
 - '/shuffle <boolean>' to config to shuffle the the queue
 
 ## Finished
