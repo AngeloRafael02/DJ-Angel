@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../interfaces.js";
 import { drive } from "../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../services/playlist-store.js";
@@ -9,7 +9,7 @@ const listCommand: Command = {
     .setDescription("Lists all MP3 files available in the Google Drive library"),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
