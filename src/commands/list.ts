@@ -6,11 +6,19 @@ import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../services/playlist-sto
 const listCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("list")
-    .setDescription("Lists all MP3 files available in the Google Drive library"),
+    .setDescription("Lists all MP3 files available in the Google Drive library")
+    .addIntegerOption((option) =>
+      option
+        .setName("page")
+        .setDescription("Page number (10 results per page)")
+        .setMinValue(1)
+        .setRequired(false)
+    ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
+    const page = interaction.options.getInteger("page") ?? 1;
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
@@ -27,13 +35,24 @@ const listCommand: Command = {
         return
       }
 
-      const fileList = files
-        .map((file, index) => `${index + 1}. **${file.name}** (ID: \`${file.id}\`)`)
+      const pageSize = 10;
+      const totalPages = Math.max(1, Math.ceil(files.length / pageSize));
+
+      if (page > totalPages) {
+        await interaction.editReply(
+          `That page doesn't exist. There ${totalPages === 1 ? "is" : "are"} **${totalPages}** page${totalPages === 1 ? "" : "s"} available.`
+        );
+        return;
+      }
+
+      const startIndex = (page - 1) * pageSize;
+      const pageFiles = files.slice(startIndex, startIndex + pageSize);
+
+      const fileList = pageFiles
+        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${file.id}\`)`)
         .join("\n");
 
-      // Discord has a 2000 character limit for messages.
-      // If the list is long, we'll truncate it for now.
-      const content = `🎵 **Available Music:**\n\n${fileList}`;
+      const content = `🎵 **Available Music** (Page ${page}/${totalPages})\n\n${fileList}`;
 
       await interaction.editReply(
         content.length > 2000 ? content.substring(0, 1990) + "..." : content
