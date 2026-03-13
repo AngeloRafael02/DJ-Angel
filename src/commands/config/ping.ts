@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
 
 const pingCommand: Command = {
@@ -8,10 +8,11 @@ const pingCommand: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     const sent = await interaction.reply({
       content: "Pinging...",
+      flags: [MessageFlags.Ephemeral],
       withResponse: true,
     });
-    const pingTime =
-      sent.interaction!.createdTimestamp - interaction.createdTimestamp;
+
+    const pingTime = sent.interaction!.createdTimestamp - interaction.createdTimestamp;
     await interaction.editReply(
       `Pong! | Latency: ${pingTime}ms | API Latency: ${Math.round(
         interaction.client.ws.ping
@@ -21,4 +22,3 @@ const pingCommand: Command = {
 };
 
 export default pingCommand;
-

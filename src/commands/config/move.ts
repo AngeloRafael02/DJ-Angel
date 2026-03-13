@@ -23,7 +23,7 @@ const moveCommand: Command = {
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "This command can only be used in a server.",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -35,7 +35,7 @@ const moveCommand: Command = {
     ) {
       await interaction.reply({
         content: "Please pick a voice channel.",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -53,7 +53,7 @@ const moveCommand: Command = {
     if (!fetchedChannel) {
       await interaction.reply({
         content: "I couldn't find that channel in this server.",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -64,7 +64,7 @@ const moveCommand: Command = {
     ) {
       await interaction.reply({
         content: "Please pick a voice channel.",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
