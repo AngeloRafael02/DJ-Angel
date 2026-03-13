@@ -6,7 +6,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
-import { Command } from "../interfaces.js";
+import { Command } from "../../interfaces.js";
 
 const moveCommand: Command = {
   data: new SlashCommandBuilder()

@@ -4,8 +4,8 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
-import { Command } from "../interfaces.js";
-import { setPlaylistFolderId } from "../services/playlist-store.js";
+import { Command } from "../../interfaces.js";
+import { setPlaylistFolderId } from "../../services/playlist-store.js";
 
 /**
  * Extract Google Drive folder ID from a public folder URL.

@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
-import { Command } from "../interfaces.js";
-import { drive } from "../services/drive-service.js";
-import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../services/playlist-store.js";
+import { Command } from "../../interfaces.js";
+import { drive } from "../../services/drive-service.js";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
 
 function escapeDriveQueryString(value: string): string {
   // Google Drive query strings use single quotes; escape backslash and single quote.

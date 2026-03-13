@@ -1,7 +1,13 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
-import { Command } from "../interfaces.js";
-import { drive } from "../services/drive-service.js";
-import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../services/playlist-store.js";
+import { Command } from "../../interfaces.js";
+import { drive } from "../../services/drive-service.js";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
+
+type DriveFile = {
+  id?: string | null;
+  name?: string | null;
+  mimeType?: string | null;
+};
 
 const listCommand: Command = {
   data: new SlashCommandBuilder()
@@ -22,13 +28,36 @@ const listCommand: Command = {
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      const response = await drive.files.list({
-        q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-        fields: "files(id, name)",
-        orderBy: "name",
-      });
+      const files: DriveFile[] = [];
 
-      const files = response.data.files;
+      // Depth‑first traversal to collect MP3 files from the root folder and any sub‑folders
+      const stack: string[] = [folderId];
+
+      while (stack.length > 0) {
+        const currentFolderId = stack.pop() as string;
+
+        let pageToken: string | undefined = undefined;
+        do {
+          const response: any = await drive.files.list({
+            q: `'${currentFolderId}' in parents and trashed = false`,
+            fields: "nextPageToken, files(id, name, mimeType)",
+            orderBy: "name",
+            pageToken,
+          });
+
+          const folderFiles: DriveFile[] = (response.data.files ?? []) as DriveFile[];
+
+          for (const file of folderFiles) {
+            if (file.mimeType === "audio/mpeg") {
+              files.push(file);
+            } else if (file.mimeType === "application/vnd.google-apps.folder" && file.id) {
+              stack.push(file.id);
+            }
+          }
+
+          pageToken = response.data.nextPageToken ?? undefined;
+        } while (pageToken);
+      }
 
       if (!files || files.length === 0) {
         await interaction.editReply("No MP3 files found in the specified folder.");

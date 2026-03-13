@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
-import { Command } from "../interfaces.js";
+import { Command } from "../../interfaces.js";
 
 const pingCommand: Command = {
   data: new SlashCommandBuilder()

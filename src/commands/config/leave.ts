@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { getVoiceConnection } from "@discordjs/voice";
-import { Command } from "../interfaces.js";
+import { Command } from "../../interfaces.js";
 
 const leaveCommand: Command = {
   data: new SlashCommandBuilder()
