@@ -5,9 +5,9 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
-import { getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
+import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";
-
+import { players } from "../../services/players.js";
 const moveCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("move")
@@ -44,7 +44,7 @@ const moveCommand: Command = {
     if (!me) {
       await interaction.reply({
         content: "I couldn't resolve my member in this server.",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -69,24 +69,38 @@ const moveCommand: Command = {
       return;
     }
 
-    const perms = fetchedChannel.permissionsFor(me);
-    if (!perms?.has(PermissionFlagsBits.Connect)) {
+    const perms = fetchedChannel.permissionsFor(interaction.guild.members.me!);
+    if (!perms?.has(PermissionFlagsBits.Connect) || !perms?.has(PermissionFlagsBits.Speak)) {
       await interaction.reply({
-        content: `I don't have permission to **Connect** to ${fetchedChannel}.`,
-        flags: [MessageFlags.Ephemeral],
+        content: "I need **Connect** and **Speak** permissions!",
+        flags: [MessageFlags.Ephemeral]
       });
       return;
     }
 
-    const existing = getVoiceConnection(interaction.guild.id);
-    if (existing) existing.destroy();
-
-    joinVoiceChannel({
+    const connection = joinVoiceChannel({
       channelId: fetchedChannel.id,
       guildId: interaction.guild.id,
       adapterCreator: interaction.guild.voiceAdapterCreator,
       selfDeaf: true,
+      selfMute: false,
     });
+
+    connection.on(VoiceConnectionStatus.Disconnected, async () => {
+      try {
+        // Try to reconnect if it was a temporary glitch
+        await Promise.race([
+          entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+          entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+        ]);
+      } catch (error) {
+        // If it's truly disconnected (kicked), destroy it
+        connection.destroy();
+      }
+    });
+
+    const player = players.get(interaction.guild.id);
+    if (player) connection.subscribe(player);
 
     await interaction.reply({
       content: `Moved to ${fetchedChannel}.`,

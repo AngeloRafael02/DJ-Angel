@@ -1,0 +1,1 @@
+export const players = new Map<string, any>();
