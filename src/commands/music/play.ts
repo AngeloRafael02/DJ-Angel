@@ -11,6 +11,8 @@ import {
   NoSubscriberBehavior,
   VoiceConnectionStatus,
   entersState,
+  AudioPlayerError,
+  AudioPlayerState,
 } from "@discordjs/voice";
 import prism from "prism-media";
 import ffmpegStatic from "ffmpeg-static";
@@ -76,6 +78,14 @@ const playCommand: Command = {
         });
         connection.subscribe(player);
         players.set(interaction.guildId, player);
+
+        player.on("stateChange", (oldState:AudioPlayerState, newState:AudioPlayerState) => {
+          console.log(`[Player Debug] ${oldState.status} => ${newState.status}`);
+        });
+
+        player.on("error", (error: AudioPlayerError) => {
+          console.error(`[Player Error] ${error.message} with resource:`, error.resource.metadata);
+        });
       } else {
         player.stop(); // Stop current song before starting new one
       }
@@ -113,7 +123,7 @@ const playCommand: Command = {
       });
 
       const opusEncoder = new prism.opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 });
-
+      
       transcoder.on('error', (err) => console.error("[FFmpeg Error]:", err.message));
       opusEncoder.on('error', (err) => console.error("[Opus Error]:", err.message));
       transcoder.once('data', (chunk) => console.log(`>>> Audio data flowing: ${chunk.length} bytes`));
@@ -124,6 +134,8 @@ const playCommand: Command = {
         inputType: StreamType.Opus,
         inlineVolume: true
       });
+
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       player.play(resource);
 
