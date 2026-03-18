@@ -1,8 +1,10 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
+import { setDefaultAutoSelectFamily } from 'net';
 import * as dotenv from "dotenv";
 import { loadCommands } from "./loadCommands.js";
 
 dotenv.config();
+setDefaultAutoSelectFamily(false);
 
 // Load all command files from the commands folder
 const commands = await loadCommands();

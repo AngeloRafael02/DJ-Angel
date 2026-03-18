@@ -1,13 +1,8 @@
-import {
-  ChannelType,
-  ChatInputCommandInteraction,
-  MessageFlags,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
+import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";
 import { players } from "../../services/players.js";
+
 const moveCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("move")
@@ -20,94 +15,78 @@ const moveCommand: Command = {
         .setRequired(true)
     ),
   execute: async (interaction: ChatInputCommandInteraction) => {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
     if (!interaction.inGuild() || !interaction.guild) {
-      await interaction.reply({
-        content: "This command can only be used in a server.",
-        flags: [MessageFlags.Ephemeral],
-      });
+      await interaction.editReply("This command can only be used in a server.");
       return;
     }
 
-    const channel = interaction.options.getChannel("channel", true);
-    if (
-      channel.type !== ChannelType.GuildVoice &&
-      channel.type !== ChannelType.GuildStageVoice
-    ) {
-      await interaction.reply({
-        content: "Please pick a voice channel.",
-        flags: [MessageFlags.Ephemeral],
-      });
+    const channelOption = interaction.options.getChannel("channel", true);
+    const channel = await interaction.guild.channels.fetch(channelOption.id);
+
+    if (!channel || (channel.type !== ChannelType.GuildVoice && channel.type !== ChannelType.GuildStageVoice)) {
+      await interaction.editReply("Please pick a valid voice channel.");
       return;
     }
 
-    const me = interaction.guild.members.me;
-    if (!me) {
-      await interaction.reply({
-        content: "I couldn't resolve my member in this server.",
-        flags: [MessageFlags.Ephemeral],
-      });
-      return;
-    }
-
-    const fetchedChannel = await interaction.guild.channels.fetch(channel.id);
-    if (!fetchedChannel) {
-      await interaction.reply({
-        content: "I couldn't find that channel in this server.",
-        flags: [MessageFlags.Ephemeral],
-      });
-      return;
-    }
-
-    if (
-      fetchedChannel.type !== ChannelType.GuildVoice &&
-      fetchedChannel.type !== ChannelType.GuildStageVoice
-    ) {
-      await interaction.reply({
-        content: "Please pick a voice channel.",
-        flags: [MessageFlags.Ephemeral],
-      });
-      return;
-    }
-
-    const perms = fetchedChannel.permissionsFor(interaction.guild.members.me!);
+    const perms = channel.permissionsFor(interaction.guild.members.me!);
     if (!perms?.has(PermissionFlagsBits.Connect) || !perms?.has(PermissionFlagsBits.Speak)) {
-      await interaction.reply({
-        content: "I need **Connect** and **Speak** permissions!",
-        flags: [MessageFlags.Ephemeral]
-      });
+      await interaction.editReply("I need **Connect** and **Speak** permissions to join that channel!");
       return;
+    }
+
+    const existingConnection = getVoiceConnection(interaction.guild.id);
+    if (existingConnection) {
+      if (existingConnection.joinConfig.channelId === channel.id &&
+        existingConnection.state.status === VoiceConnectionStatus.Ready) {
+        await interaction.editReply(`I'm already in ${channel}!`);
+        return;
+      }
+      existingConnection.destroy();
     }
 
     const connection = joinVoiceChannel({
-      channelId: fetchedChannel.id,
+      channelId: channel.id,
       guildId: interaction.guild.id,
       adapterCreator: interaction.guild.voiceAdapterCreator,
       selfDeaf: true,
       selfMute: false,
     });
 
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 50_000);
+
+      if (channel.type === ChannelType.GuildStageVoice) {
+          await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
+              console.warn("Failed to set suppressed: false. Bot might need 'Request to Speak' permission.");
+          });
+      }
+
+      const player = players.get(interaction.guild.id);
+      if (player) {
+          connection.subscribe(player);
+      }
+
+      await interaction.editReply(`Successfully moved to ${channel}.`);
+
+    } catch (error) {
+      connection.destroy();
+      console.error("[Move Error]:", error);
+      await interaction.editReply("Failed to connect to the voice channel (Timeout). Check my permissions or UDP settings.");
+    }
+
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
       try {
-        // Try to reconnect if it was a temporary glitch
         await Promise.race([
           entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
           entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
         ]);
-      } catch (error) {
-        // If it's truly disconnected (kicked), destroy it
+      } catch (e) {
         connection.destroy();
       }
-    });
-
-    const player = players.get(interaction.guild.id);
-    if (player) connection.subscribe(player);
-
-    await interaction.reply({
-      content: `Moved to ${fetchedChannel}.`,
-      flags: [MessageFlags.Ephemeral],
     });
   },
 };
 
 export default moveCommand;
-
