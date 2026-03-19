@@ -1,24 +1,12 @@
-import {
-  ChatInputCommandInteraction,
-  MessageFlags,
-  SlashCommandBuilder,
-} from "discord.js";
-import {
-  createAudioPlayer,
-  createAudioResource,
-  getVoiceConnection,
-  StreamType,
-  NoSubscriberBehavior,
-  VoiceConnectionStatus,
-  entersState,
-  AudioPlayerError,
-  AudioPlayerState,
-} from "@discordjs/voice";
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, } from "discord.js";
+import { createAudioPlayer, createAudioResource, getVoiceConnection, StreamType, NoSubscriberBehavior, VoiceConnectionStatus, entersState, AudioPlayerError, AudioPlayerState, } from "@discordjs/voice";
 import prism from "prism-media";
 import ffmpegStatic from "ffmpeg-static";
+
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { players } from "../../services/players.js";
+import { getOriginalId } from "../../services/id-handler.js";
 
 const ffmpegPath = ffmpegStatic as unknown as string | null;
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
@@ -63,7 +51,7 @@ const playCommand: Command = {
       return;
     }
 
-    const songId = interaction.options.getString("songid", true).trim();
+    const songId = getOriginalId(interaction.options.getString("songid", true).trim());
 
 
     try {

@@ -1,7 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
+
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
+import { getShortId } from "../../services/id-handler.js";
 
 type DriveFile = {
   id?: string | null;
@@ -78,7 +80,9 @@ const listCommand: Command = {
       const pageFiles = files.slice(startIndex, startIndex + pageSize);
 
       const fileList = pageFiles
-        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${file.id}\`)`)
+        .map((file, index) => {
+          const shortId:string = getShortId(file.id!);
+          return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`})
         .join("\n");
 
       const content = `🎵 **Available Music** (Page ${page}/${totalPages})\n\n${fileList}`;
