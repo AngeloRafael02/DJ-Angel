@@ -10,6 +10,7 @@
 - '/next' command to get to the next song in the queue
 - add 'all' optonal flag to '/play' command to automatically put all songs in a queue (add songs that are not in queue yet)
 - '/shuffle <boolean>' to config to shuffle the the queue
+- implement Pino npm package for interanal logging system
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE
