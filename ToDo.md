@@ -2,8 +2,9 @@
 
 ## Unfinished
 
+- shorten songiD (very long to 6 digit hexcodes) for ease of command usage
 - create a queue system
-- modify '/play <song-name>' to add the song on queue
+- create '/add <song-id>' to add the song on queue
 - modify /stop to stop song and get to the next song in the queue
 - '/queue' command to list queue (ephemeral) + pagination
 - '/next' command to get to the next song in the queue
@@ -16,7 +17,7 @@
 - Make /list result ephemeral for users looking for songs - DONE
 - limit /list result to 10, implelment pagination by adding a optinal page argument - DONE
 - - configure /list to show all even if there are folder with songs inside (use recursive) - DONE
-- '/play <song-name>' commands to make bot play a song (one Song for now) - DONE
+- '/play <song-id>' commands to make bot play a song (one Song for now) - DONE
 - add /stop command to stop music
 
 
