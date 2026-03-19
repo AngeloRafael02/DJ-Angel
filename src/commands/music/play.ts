@@ -112,27 +112,29 @@ const playCommand: Command = {
       }
 
       const transcoder = new prism.FFmpeg({
-          args: [
-              "-analyzeduration", "0",
-              "-loglevel", "8",
-              "-i", "pipe:0",
-              "-f", "s16le",
-              "-ar", "48000",
-              "-ac", "2",
-          ],
+        args: [
+          "-analyzeduration", "0",
+          "-loglevel", "0",
+          "-i", "pipe:0",
+          "-vn",
+          "-f", "s16le",
+          "-ar", "48000",
+          "-ac", "2",
+          "-threads", "2",
+          "-af", "volume=0.5"
+        ],
       });
 
       const opusEncoder = new prism.opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 });
-      
+
       transcoder.on('error', (err) => console.error("[FFmpeg Error]:", err.message));
       opusEncoder.on('error', (err) => console.error("[Opus Error]:", err.message));
       transcoder.once('data', (chunk) => console.log(`>>> Audio data flowing: ${chunk.length} bytes`));
 
-      const opusStream = mediaResponse.data.pipe(transcoder).pipe(opusEncoder);
+      const opusStream = mediaResponse.data.pipe(transcoder, { end: false }).pipe(opusEncoder);
 
       const resource = createAudioResource(opusStream, {
-        inputType: StreamType.Opus,
-        inlineVolume: true
+        inputType: StreamType.Opus
       });
 
       await new Promise(resolve => setTimeout(resolve, 500));

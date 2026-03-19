@@ -3,6 +3,14 @@
 ## Unfinished
 
 - shorten songiD (very long to 6 digit hexcodes) for ease of command usage
+- make /play command more performant
+  - consider StreamType.OggOpus insteadn of StreamType.Opus
+  - consider '-re' flag in FFmpeg arguments to read input at the native frame rate
+  - implement pre-buffering (wait until a small "chunk" (e.g., 200KB–500KB) is in the buffer)
+  - Use a PassThrough stream from the node:stream module as an intermediary
+  - move the Audio Player and FFmpeg transcoding into a Worker Thread
+  - Cache Metadata: Store the name and mimeType in a local database (like Redis or SQLite). This allows your /play command to start the stream immediately without waiting for the first "metadata" API call to return.
+  - Direct Link Access: If possible, use a service account with "viewer" permissions and generate a direct web-content link. This sometimes bypasses some of the overhead found in the official Node.js Drive SDK.
 - create a queue system
 - create '/add <song-id>' to add the song on queue
 - modify /stop to stop song and get to the next song in the queue
