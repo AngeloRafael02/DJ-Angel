@@ -2,6 +2,7 @@
 
 ## Unfinished
 
+- create service to check if command was done my moderator/admin, implement to all commands 
 - make /play command more performant
   - consider StreamType.OggOpus insteadn of StreamType.Opus
   - consider '-re' flag in FFmpeg arguments to read input at the native frame rate
