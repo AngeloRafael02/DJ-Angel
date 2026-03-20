@@ -91,9 +91,19 @@ const playCommand: Command = {
       }
 
       const mediaResponse: any = await drive.files.get(
-          { fileId: songId, alt: "media" },
-          { responseType: "stream" }
+        { fileId: songId, alt: "media" },
+        { 
+          responseType: "stream",
+          maxContentLength:Infinity,
+          adapter:undefined 
+        }
       );
+
+      const driveStream = mediaResponse.data as any;
+
+      if (driveStream.readableHighWaterMark) {
+        driveStream._readableState.highWaterMark = 1024 * 1024; 
+      }
 
       if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {
         throw new Error("Google Drive did not return a valid readable stream.");
@@ -108,7 +118,8 @@ const playCommand: Command = {
           "-f", "s16le",
           "-ar", "48000",
           "-ac", "2",
-          "-threads", "2",
+          "-probesize", "32768",
+          "-threads", "1",
           "-af", "volume=0.5"
         ],
       });
@@ -119,13 +130,15 @@ const playCommand: Command = {
       opusEncoder.on('error', (err) => console.error("[Opus Error]:", err.message));
       transcoder.once('data', (chunk) => console.log(`>>> Audio data flowing: ${chunk.length} bytes`));
 
-      const opusStream = mediaResponse.data.pipe(transcoder, { end: false }).pipe(opusEncoder);
+      const opusStream = mediaResponse.data.pipe(
+        transcoder, { end: false }).pipe(opusEncoder);
 
       const resource = createAudioResource(opusStream, {
-        inputType: StreamType.Opus
+        inputType: StreamType.Opus,
+        inlineVolume: false
       });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       player.play(resource);
 
