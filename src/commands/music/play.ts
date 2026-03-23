@@ -7,6 +7,7 @@ import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { players } from "../../services/players.js";
 import { getOriginalId } from "../../services/id-handler.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 const ffmpegPath = ffmpegStatic as unknown as string | null;
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
@@ -26,6 +27,11 @@ const playCommand: Command = {
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+    if (!isAuthorized(interaction)) {
+      await interaction.editReply("You do not have permission to use this command.");
+      return;
+    }
 
     if (!interaction.guildId) return;
 
@@ -67,7 +73,7 @@ const playCommand: Command = {
         connection.subscribe(player);
         players.set(interaction.guildId, player);
 
-        player.on("stateChange", (oldState:AudioPlayerState, newState:AudioPlayerState) => {
+        player.on("stateChange", (oldState: AudioPlayerState, newState: AudioPlayerState) => {
           console.log(`[Player Debug] ${oldState.status} => ${newState.status}`);
         });
 
@@ -92,17 +98,17 @@ const playCommand: Command = {
 
       const mediaResponse: any = await drive.files.get(
         { fileId: songId, alt: "media" },
-        { 
+        {
           responseType: "stream",
-          maxContentLength:Infinity,
-          adapter:undefined 
+          maxContentLength: Infinity,
+          adapter: undefined
         }
       );
 
       const driveStream = mediaResponse.data as any;
 
       if (driveStream.readableHighWaterMark) {
-        driveStream._readableState.highWaterMark = 1024 * 1024; 
+        driveStream._readableState.highWaterMark = 1024 * 1024;
       }
 
       if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {

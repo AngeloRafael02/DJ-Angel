@@ -2,6 +2,7 @@ import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlags
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";
 import { players } from "../../services/players.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 const moveCommand: Command = {
   data: new SlashCommandBuilder()
@@ -16,6 +17,11 @@ const moveCommand: Command = {
     ),
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+    if (!isAuthorized(interaction)) {
+      await interaction.editReply("You do not have permission to use this command.");
+      return;
+    }
 
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.editReply("This command can only be used in a server.");
@@ -58,14 +64,14 @@ const moveCommand: Command = {
       await entersState(connection, VoiceConnectionStatus.Ready, 50_000);
 
       if (channel.type === ChannelType.GuildStageVoice) {
-          await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
-              console.warn("Failed to set suppressed: false. Bot might need 'Request to Speak' permission.");
-          });
+        await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
+          console.warn("Failed to set suppressed: false. Bot might need 'Request to Speak' permission.");
+        });
       }
 
       const player = players.get(interaction.guild.id);
       if (player) {
-          connection.subscribe(player);
+        connection.subscribe(player);
       }
 
       await interaction.editReply(`Successfully moved to ${channel}.`);

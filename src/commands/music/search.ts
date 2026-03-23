@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 function escapeDriveQueryString(value: string): string {
   // Google Drive query strings use single quotes; escape backslash and single quote.
@@ -29,6 +30,11 @@ const searchCommand: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
+    if (!isAuthorized(interaction)) {
+      await interaction.editReply("You do not have permission to use this command.");
+      return;
+    }
+
     const query = interaction.options.getString("query", true).trim();
     const page = interaction.options.getInteger("page") ?? 1;
 
@@ -45,7 +51,7 @@ const searchCommand: Command = {
       let pageToken: string | undefined = undefined;
 
       do {
-        const response:any = await drive.files.list({
+        const response: any = await drive.files.list({
           q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false and fullText contains '${escaped}'`,
           fields: "nextPageToken, files(id, name)",
           orderBy: "name",

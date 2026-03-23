@@ -4,6 +4,7 @@ import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
 import { getShortId } from "../../services/id-handler.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 type DriveFile = {
   id?: string | null;
@@ -25,6 +26,11 @@ const listCommand: Command = {
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+    if (!isAuthorized(interaction)) {
+      await interaction.editReply("You do not have permission to use this command.");
+      return;
+    }
 
     const page = interaction.options.getInteger("page") ?? 1;
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
@@ -81,8 +87,9 @@ const listCommand: Command = {
 
       const fileList = pageFiles
         .map((file, index) => {
-          const shortId:string = getShortId(file.id!);
-          return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`})
+          const shortId: string = getShortId(file.id!);
+          return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`
+        })
         .join("\n");
 
       const content = `🎵 **Available Music** (Page ${page}/${totalPages})\n\n${fileList}`;

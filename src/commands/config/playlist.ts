@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Command } from "../../interfaces.js";
 import { setPlaylistFolderId } from "../../services/playlist-store.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 /**
  * Extract Google Drive folder ID from a public folder URL.
@@ -19,7 +20,7 @@ const extractFolderIdFromUrl = (url: string): string | null => {
     /drive\.google\.com\/drive\/folders\/([a-zA-Z0-9_-]+)/
   );
   if (foldersMatch) return foldersMatch[1];
-  
+
   const openMatch = trimmed.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
   if (openMatch) return openMatch[1];
   return null;
@@ -37,6 +38,15 @@ const playlistCommand: Command = {
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   execute: async (interaction: ChatInputCommandInteraction) => {
+
+    if (!isAuthorized(interaction)) {
+      await interaction.reply({
+        content: "You do not have permission to use this command.",
+        flags: [MessageFlags.Ephemeral]
+      });
+      return;
+    }
+
     if (!interaction.inGuild() || !interaction.guild) {
       await interaction.reply({
         content: "This command can only be used in a server.",

@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 import { Command } from "../../interfaces.js";
 import { players } from "../../services/players.js";
+import { isAuthorized } from "../../services/auth-service.js";
 
 const stopCommand: Command = {
   data: new SlashCommandBuilder()
@@ -13,6 +14,11 @@ const stopCommand: Command = {
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+    if (!isAuthorized(interaction)) {
+      await interaction.editReply("You do not have permission to use this command.");
+      return;
+    }
 
     const guildId = interaction.guildId;
     if (!guildId) return;
