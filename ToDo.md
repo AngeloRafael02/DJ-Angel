@@ -3,12 +3,7 @@
 ## Unfinished
 
 - make /play command more performant
-
-- create a queue system
-- create '/add <song-id>' to add the song on queue if none is on queue, play the song.
-- modify /stop to stop song and get to the next song in the queue
 - '/queue' command to list queue (ephemeral) + pagination
-- '/next' command to get to the next song in the queue
 - add 'all' optonal flag to '/play' command to automatically put all songs in a queue (add songs that are not in queue yet)
 - '/shuffle <boolean>' to config to shuffle the the queue
 - implement Pino npm package for interanal logging system
@@ -23,6 +18,9 @@
 - add /stop command to stop music - DONE
 - shorten songiD (very long to 6 alphanumerical characters) for ease of command usage - DONE
 - create service to check if command was done my moderator/admin, implement to all commands - DONE
+- create a queue system - DONE
+- modify '/play <song-id>' to add the song on queue. If none is on queue, play the song. - DONE
+- modify /stop to /skip to stop song and get to the next song in the queue - DONE
 
 
 __Additional Notes on this [link](https://gemini.google.com/share/de73c37028cd)__

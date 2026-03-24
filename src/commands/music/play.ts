@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, } from "discord.js";
-import { createAudioPlayer, createAudioResource, getVoiceConnection, StreamType, NoSubscriberBehavior, VoiceConnectionStatus, entersState, AudioPlayerError, AudioPlayerState, } from "@discordjs/voice";
+import { createAudioPlayer, createAudioResource, getVoiceConnection, StreamType, NoSubscriberBehavior, VoiceConnectionStatus, entersState, AudioPlayerError, AudioPlayerState, AudioPlayerStatus } from "@discordjs/voice";
 import prism from "prism-media";
 import ffmpegStatic from "ffmpeg-static";
 
@@ -58,33 +58,13 @@ const playCommand: Command = {
     }
 
     const songId = getOriginalId(interaction.options.getString("songid", true).trim());
-
+    const guildId = interaction.guildId!;
 
     try {
       if (connection.state.status !== VoiceConnectionStatus.Ready) {
         await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
       }
-      // 1. Manage the Player (Reuse or Create)
-      let player = players.get(interaction.guildId);
-      if (!player) {
-        player = createAudioPlayer({
-          behaviors: { noSubscriber: NoSubscriberBehavior.Play }, // Change to Play to prevent auto-pause
-        });
-        connection.subscribe(player);
-        players.set(interaction.guildId, player);
 
-        player.on("stateChange", (oldState: AudioPlayerState, newState: AudioPlayerState) => {
-          console.log(`[Player Debug] ${oldState.status} => ${newState.status}`);
-        });
-
-        player.on("error", (error: AudioPlayerError) => {
-          console.error(`[Player Error] ${error.message} with resource:`, error.resource.metadata);
-        });
-      } else {
-        player.stop(); // Stop current song before starting new one
-      }
-
-      // 2. Fetch from Google Drive
       const metaResponse = await drive.files.get({
         fileId: songId,
         fields: "id, name, mimeType",
@@ -96,65 +76,101 @@ const playCommand: Command = {
         return;
       }
 
-      const mediaResponse: any = await drive.files.get(
-        { fileId: songId, alt: "media" },
-        {
-          responseType: "stream",
-          maxContentLength: Infinity,
-          adapter: undefined
-        }
-      );
+      let guildQueue = players.get(guildId);
 
-      const driveStream = mediaResponse.data as any;
+      if (!guildQueue) {
+        const player = createAudioPlayer({
+          behaviors: { noSubscriber: NoSubscriberBehavior.Play },
+        });
 
-      if (driveStream.readableHighWaterMark) {
-        driveStream._readableState.highWaterMark = 1024 * 1024;
+        connection.subscribe(player);
+        guildQueue = { player, queue: [] };
+        players.set(guildId, guildQueue);
+
+        // 3. The "Magic" Event: When a song finishes, play the next one
+        player.on(AudioPlayerStatus.Idle, () => {
+          const nextSong = guildQueue!.queue.shift(); // Remove the finished song
+          if (guildQueue!.queue.length > 0) {
+            // Play the next one in line
+            playNextInQueue(guildId, interaction);
+          }
+        });
       }
 
-      if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {
-        throw new Error("Google Drive did not return a valid readable stream.");
+      // 4. Add to queue and decide whether to play now or wait
+      guildQueue.queue.push({ id: songId!, name: file.name || "Unknown" });
+
+      if (guildQueue.player.state.status === AudioPlayerStatus.Idle) {
+        await playNextInQueue(guildId, interaction);
+        await interaction.editReply(`▶️ Now playing: **${file.name}**`);
+      } else {
+        await interaction.editReply(`📝 Added to queue: **${file.name}** (Position: ${guildQueue.queue.length - 1})`);
       }
-
-      const transcoder = new prism.FFmpeg({
-        args: [
-          "-analyzeduration", "0",
-          "-loglevel", "0",
-          "-i", "pipe:0",
-          "-vn",
-          "-f", "s16le",
-          "-ar", "48000",
-          "-ac", "2",
-          "-probesize", "32768",
-          "-threads", "1",
-          "-af", "volume=0.5"
-        ],
-      });
-
-      const opusEncoder = new prism.opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 });
-
-      transcoder.on('error', (err) => console.error("[FFmpeg Error]:", err.message));
-      opusEncoder.on('error', (err) => console.error("[Opus Error]:", err.message));
-      transcoder.once('data', (chunk) => console.log(`>>> Audio data flowing: ${chunk.length} bytes`));
-
-      const opusStream = mediaResponse.data.pipe(
-        transcoder, { end: false }).pipe(opusEncoder);
-
-      const resource = createAudioResource(opusStream, {
-        inputType: StreamType.Opus,
-        inlineVolume: false
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      player.play(resource);
-
-      console.log("Player state:", player.state.status);
-      await interaction.editReply(`▶️ Now playing: **${file.name}**`);
     } catch (error: any) {
       console.error("[Execution Error]:", error);
       await interaction.editReply("Failed to play.");
     }
   },
 };
+
+async function playNextInQueue(guildId: string, interaction: any) {
+  const guildQueue = players.get(guildId);
+  if (!guildQueue || guildQueue.queue.length === 0) return;
+
+  const currentSong = guildQueue.queue[0]; // Peek at the first item
+
+  try {
+    const mediaResponse: any = await drive.files.get(
+      { fileId: currentSong.id, alt: "media" },
+      {
+        responseType: "stream",
+        maxContentLength: Infinity,
+        adapter: undefined
+      }
+    );
+
+    const driveStream = mediaResponse.data as any;
+
+    if (driveStream.readableHighWaterMark) {
+      driveStream._readableState.highWaterMark = 1024 * 1024;
+    }
+
+    if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {
+      throw new Error("Google Drive did not return a valid readable stream.");
+    }
+
+    const transcoder = new prism.FFmpeg({
+      args: [
+        "-analyzeduration", "0",
+        "-loglevel", "0",
+        "-i", "pipe:0",
+        "-vn",
+        "-f", "s16le",
+        "-ar", "48000",
+        "-ac", "2",
+        "-probesize", "32768",
+        "-threads", "1",
+        "-af", "volume=0.5"
+      ],
+    });
+
+    const opusEncoder = new prism.opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 });
+
+    const opusStream = mediaResponse.data.pipe(
+      transcoder, { end: false }).pipe(opusEncoder);
+
+
+    const resource = createAudioResource(opusStream, {
+      inputType: StreamType.Opus,
+      inlineVolume: false
+    });
+
+    guildQueue.player.play(resource);
+  } catch (error) {
+    console.error("Queue Error:", error);
+    guildQueue.queue.shift();
+    playNextInQueue(guildId, interaction);
+  }
+}
 
 export default playCommand;

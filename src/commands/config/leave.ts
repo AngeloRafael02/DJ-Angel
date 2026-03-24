@@ -39,7 +39,7 @@ const leaveCommand: Command = {
 
     await interaction.reply({
       content: "Left the voice channel.",
-      flags: [],
+      flags: [MessageFlags.Ephemeral] 
     });
   },
 };

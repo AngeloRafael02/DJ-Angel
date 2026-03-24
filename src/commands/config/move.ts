@@ -65,16 +65,23 @@ const moveCommand: Command = {
 
       if (channel.type === ChannelType.GuildStageVoice) {
         await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
-          console.warn("Failed to set suppressed: false. Bot might need 'Request to Speak' permission.");
+          console.warn("Failed to set suppressed: false.");
         });
       }
 
-      const player = players.get(interaction.guild.id);
-      if (player) {
-        connection.subscribe(player);
-      }
+      const guildData = players.get(interaction.guild.id);
+      if (guildData) {
+        connection.subscribe(guildData.player);
 
-      await interaction.editReply(`Successfully moved to ${channel}.`);
+        const queueSize = guildData.queue.length;
+        const statusMsg = queueSize > 0
+          ? `Successfully moved to ${channel}. Resuming queue (${queueSize} songs).`
+          : `Successfully moved to ${channel}.`;
+
+        await interaction.editReply(statusMsg);
+      } else {
+        await interaction.editReply(`Successfully moved to ${channel}. Ready to play!`);
+      }
 
     } catch (error) {
       connection.destroy();
