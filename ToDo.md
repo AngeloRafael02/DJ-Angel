@@ -2,9 +2,10 @@
 
 ## Unfinished
 
-- make /play command more performant
-- add 'all' optonal flag to '/play' command to automatically put all songs in a queue (add songs that are not in queue yet)
-- '/shuffle <boolean>' to config to shuffle the the queue
+- make /play command more performant - Do This first
+- find way to sort playlist (alphabetically on filename, alphabetically on author, alphabetically on album, chronologically last-added)
+- /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
+- create playlist groups by putting songs on sub folders inside public folder
 - implement Pino npm package for interanal logging system
 
 ## Finished
