@@ -4,7 +4,6 @@
 
 - make /play command more performant
 - add 'all' optonal flag to '/play' command to automatically put all songs in a queue (add songs that are not in queue yet)
-- bring back /stop but use it to stop the DJ from playing current song and clearing up the queue
 - '/shuffle <boolean>' to config to shuffle the the queue
 - implement Pino npm package for interanal logging system
 
@@ -22,6 +21,7 @@
 - modify '/play <song-id>' to add the song on queue. If none is on queue, play the song. - DONE
 - modify /stop to /skip to stop song and get to the next song in the queue - DONE
 - '/queue' command to list queue (ephemeral) + pagination - DONE
+- bring back /stop but use it to stop the DJ from playing current song and clearing up the queue - DONE
 
 
 __Additional Notes on this [link](https://gemini.google.com/share/de73c37028cd)__
