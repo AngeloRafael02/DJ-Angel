@@ -87,17 +87,14 @@ const playCommand: Command = {
         guildQueue = { player, queue: [] };
         players.set(guildId, guildQueue);
 
-        // 3. The "Magic" Event: When a song finishes, play the next one
         player.on(AudioPlayerStatus.Idle, () => {
-          const nextSong = guildQueue!.queue.shift(); // Remove the finished song
+          const nextSong = guildQueue!.queue.shift();
           if (guildQueue!.queue.length > 0) {
-            // Play the next one in line
             playNextInQueue(guildId, interaction);
           }
         });
       }
 
-      // 4. Add to queue and decide whether to play now or wait
       guildQueue.queue.push({ id: songId!, name: file.name || "Unknown" });
 
       if (guildQueue.player.state.status === AudioPlayerStatus.Idle) {
@@ -117,7 +114,7 @@ async function playNextInQueue(guildId: string, interaction: any) {
   const guildQueue = players.get(guildId);
   if (!guildQueue || guildQueue.queue.length === 0) return;
 
-  const currentSong = guildQueue.queue[0]; // Peek at the first item
+  const currentSong = guildQueue.queue[0];
 
   try {
     const mediaResponse: any = await drive.files.get(

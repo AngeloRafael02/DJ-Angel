@@ -58,7 +58,6 @@ const queueCommand: Command = {
     const startIndex = (page - 1) * pageSize;
     const pageSongs = guildData.queue.slice(startIndex, startIndex + pageSize);
 
-    // 5. Format the list
     const songList = pageSongs
       .map((song, index) => {
         const absoluteIndex = startIndex + index;
@@ -67,9 +66,8 @@ const queueCommand: Command = {
       })
       .join("\n");
 
-    // 6. Create the Embed with Dynamic Title
     const embed = new EmbedBuilder()
-      .setTitle(`Queue for ${channelName}`) // Updated Title
+      .setTitle(`Queue for ${channelName}`)
       .setColor(0x00ae86)
       .setDescription(songList)
       .setFooter({ 

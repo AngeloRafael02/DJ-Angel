@@ -5,7 +5,6 @@ import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-
 import { isAuthorized } from "../../services/auth-service.js";
 
 function escapeDriveQueryString(value: string): string {
-  // Google Drive query strings use single quotes; escape backslash and single quote.
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 

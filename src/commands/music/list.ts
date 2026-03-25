@@ -38,7 +38,6 @@ const listCommand: Command = {
     try {
       const files: DriveFile[] = [];
 
-      // Depth‑first traversal to collect MP3 files from the root folder and any sub‑folders
       const stack: string[] = [folderId];
 
       while (stack.length > 0) {

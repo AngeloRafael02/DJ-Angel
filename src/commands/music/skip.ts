@@ -25,15 +25,12 @@ const skipCommand: Command = {
 
     const guildData = players.get(guildId);
 
-    // Check if there is a player and if it's actually playing something
     if (!guildData || !guildData.player) {
       await interaction.editReply("There is no music playing to skip.");
       return;
     }
 
     try {
-      // .stop() forces the player into the 'Idle' state.
-      // Our 'Idle' listener in the play command will then handle playing the next song.
       guildData.player.stop();
 
       const nextSongName = guildData.queue.length > 1 

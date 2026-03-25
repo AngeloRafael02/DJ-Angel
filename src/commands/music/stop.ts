@@ -1,7 +1,4 @@
-import {
-  ChatInputCommandInteraction,
-  MessageFlags,
-  SlashCommandBuilder,
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder,
 } from "discord.js";
 import { getVoiceConnection } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";

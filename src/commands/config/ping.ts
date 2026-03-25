@@ -16,7 +16,6 @@ const pingCommand: Command = {
       return;
     }
 
-
     const sent = await interaction.reply({
       content: "Pinging...",
       flags: [MessageFlags.Ephemeral],
