@@ -143,3 +143,6 @@ dj-angel-bot.json
 
 # Per-guild playlist folder store (optional: remove to commit)
 playlist-store.json
+
+# Database File for storing playlist drive_cache
+cache.db

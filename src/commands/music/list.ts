@@ -1,10 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
+
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
 import { getShortId } from "../../services/id-handler.js";
 import { isAuthorized } from "../../services/auth-service.js";
-import { cache } from "../../services/search-cache-service.js";
+import { dbCache } from "../../services/search-cache-service.js";
 
 type DriveFile = {
   id?: string | null;
@@ -36,7 +37,7 @@ const listCommand: Command = {
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      let allFiles = cache.get<DriveFile[]>(guildId);
+      let allFiles = dbCache.get<DriveFile[]>(guildId);
 
       if (!allFiles) {
         allFiles = [];
@@ -60,7 +61,7 @@ const listCommand: Command = {
           pageToken = response.data.nextPageToken ?? undefined;
         } while (pageToken);
 
-        cache.set(guildId, allFiles);
+        dbCache.set(guildId, allFiles);
       }
 
       if (allFiles.length === 0) {

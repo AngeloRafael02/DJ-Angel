@@ -1,7 +1,9 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from "discord.js";
 import { setDefaultAutoSelectFamily } from 'net';
 import * as dotenv from "dotenv";
+
 import { loadCommands } from "./loadCommands.js";
+import { dbCache } from "./services/search-cache-service.js";
 
 dotenv.config();
 setDefaultAutoSelectFamily(false);
@@ -70,3 +72,10 @@ if (!TOKEN) {
 }
 
 client.login(TOKEN);
+
+const THREE_HOURS = 3 * 60 * 60 * 1000;
+
+setInterval(() => {
+  const { deleted } = dbCache.cleanup();
+  console.log(`[Scheduled Task] Cleaned up ${deleted} expired cache entries.`);
+}, THREE_HOURS);
