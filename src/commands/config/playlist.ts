@@ -5,8 +5,11 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { Command } from "../../interfaces.js";
+import { drive } from "../../services/drive-service.js";
+import { dbCache } from "../../services/search-cache-service.js";
 import { setPlaylistFolderId } from "../../services/playlist-store.js";
 import { isAuthorized } from "../../services/auth-service.js";
+
 
 /**
  * Extract Google Drive folder ID from a public folder URL.
@@ -67,12 +70,40 @@ const playlistCommand: Command = {
       return;
     }
 
-    setPlaylistFolderId(interaction.guild.id, folderId);
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-    await interaction.reply({
-      content: `Playlist folder updated. This server will now use this folder for **list** and music. Make sure the folder is shared so the bot can read it.`,
-      flags: [MessageFlags.Ephemeral],
-    });
+   try {
+      // 3. Update the ID and wipe the old cache
+      setPlaylistFolderId(interaction.guild.id, folderId);
+
+      // 4. Eager Sync: Fetch the new folder contents immediately
+      const newFiles: { id: string; name: string }[] = [];
+      let pageToken: string | undefined = undefined;
+
+      do {
+        const response: any = await drive.files.list({
+          q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+          fields: "nextPageToken, files(id, name)",
+          pageSize: 1000,
+          pageToken,
+        });
+        newFiles.push(...(response.data.files ?? []));
+        pageToken = response.data.nextPageToken ?? undefined;
+      } while (pageToken);
+
+      // 5. Save the new results to SQLite
+      dbCache.set(interaction.guild.id, newFiles);
+
+      await interaction.editReply({
+        content: `✅ **Success!** Playlist updated to new folder.\nFound **${newFiles.length}** MP3 files. The cache has been refreshed.`,
+      });
+
+    } catch (error) {
+      console.error("Sync Error during playlist change:", error);
+      await interaction.editReply({
+        content: `⚠️ Folder ID updated, but I couldn't scan the files. Make sure the folder is **Public** or shared with my service account.`,
+      });
+    }
   },
 };
 

@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
+import { dbCache } from "./search-cache-service.js";
 
 const STORE_PATH = path.join(process.cwd(), "playlist-store.json");
-
 type Store = Record<string, string>;
 
 function loadStore(): Store {
@@ -39,6 +39,11 @@ export function getPlaylistFolderId(guildId: string): string {
  */
 export function setPlaylistFolderId(guildId: string, folderId: string): void {
   const store = loadStore();
-  store[guildId] = folderId;
-  saveStore(store);
+
+  if (store[guildId] !== folderId) {
+    store[guildId] = folderId;
+    saveStore(store);
+
+    dbCache.clear(guildId);
+  }
 }
