@@ -35,6 +35,7 @@ export async function loadCommands(): Promise<Command[]> {
   walk(commandsDir);
 
   const commands: Command[] = [];
+  let failedCount = 0;
 
   for (const file of files) {
     const modulePath = pathToFileURL(file).href;
@@ -45,14 +46,22 @@ export async function loadCommands(): Promise<Command[]> {
       if (mod.default && typeof mod.default.execute === "function") {
         commands.push(mod.default);
       } else {
-        console.warn(
-          `[loadCommands] ${displayPath}: missing default Command export, skipped`
-        );
+        console.warn(`[loadCommands] ${displayPath}: missing default Command export, skipped`);
+        failedCount++;
       }
     } catch (err) {
       console.error(`[loadCommands] Failed to load ${displayPath}:`, err);
+      failedCount++;
     }
   }
+
+  console.log(
+    `------------------------------------------\n` +
+    `📁 Command Discovery Complete:\n` +
+    `✅ Successfully loaded: ${commands.length}\n` +
+    `❌ Failed to load: ${failedCount}\n` +
+    `------------------------------------------`
+  );
 
   return commands;
 }
