@@ -4,8 +4,7 @@ import { dbCache } from "../../database/search-cache.js";
 import { drive } from "../../services/google-drive.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
-
-type DriveFile = { id: string; name: string };
+import { DriveFile } from "../../interfaces.js";
 
 const searchCommand: Command = {
   data: new SlashCommandBuilder()

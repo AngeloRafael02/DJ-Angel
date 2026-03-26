@@ -6,11 +6,7 @@ import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.
 import { getShortId } from "../../utils/crypto.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
-
-type DriveFile = {
-  id?: string | null;
-  name?: string | null;
-};
+import { DriveFile } from "../../interfaces.js";
 
 const listCommand: Command = {
   data: new SlashCommandBuilder()

@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
 import { dbCache } from "../database/search-cache.js";
+import { Store } from "../interfaces.js";
 
 const STORE_PATH = path.join(process.cwd(), "playlist-store.json");
-type Store = Record<string, string>;
 
 function loadStore(): Store {
   if (!existsSync(STORE_PATH)) return {};

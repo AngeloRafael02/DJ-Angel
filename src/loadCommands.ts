@@ -1,7 +1,6 @@
 import { readdirSync } from "fs";
 import { dirname, join, relative } from "path";
-import { pathToFileURL } from "url";
-import { fileURLToPath } from "url";
+import { pathToFileURL, fileURLToPath } from "url";
 import type { Command } from "./interfaces.js";
 
 const __filename = fileURLToPath(import.meta.url);
