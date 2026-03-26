@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { dbCache } from "../../services/search-cache-service.js";
+import { dbCache } from "../../database/search-cache.js";
 
 const cleanCacheCommand: Command = {
   data: new SlashCommandBuilder()

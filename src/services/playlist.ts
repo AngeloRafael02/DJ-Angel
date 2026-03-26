@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
-import { dbCache } from "./search-cache-service.js";
+import { dbCache } from "../database/search-cache.js";
 
 const STORE_PATH = path.join(process.cwd(), "playlist-store.json");
 type Store = Record<string, string>;

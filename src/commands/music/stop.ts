@@ -1,9 +1,10 @@
-import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder,
+import {
+  ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder,
 } from "discord.js";
 import { getVoiceConnection } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";
-import { players } from "../../services/players.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { players } from "../../core/queue.manager.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const stopCommand: Command = {
   data: new SlashCommandBuilder()

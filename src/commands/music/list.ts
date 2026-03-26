@@ -1,11 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 
 import { Command } from "../../interfaces.js";
-import { drive } from "../../services/drive-service.js";
-import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
-import { getShortId } from "../../services/id-handler.js";
-import { isAuthorized } from "../../services/auth-service.js";
-import { dbCache } from "../../services/search-cache-service.js";
+import { drive } from "../../services/google-drive.js";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
+import { getShortId } from "../../utils/crypto.js";
+import { isAuthorized } from "../../utils/auth.js";
+import { dbCache } from "../../database/search-cache.js";
 
 type DriveFile = {
   id?: string | null;
@@ -93,7 +93,7 @@ const listCommand: Command = {
         content.length > 2000 ? content.substring(0, 1990) + "..." : content
       );
 
-    } catch (error) { 
+    } catch (error) {
       console.error("Google Drive API Error:", error);
       await interaction.editReply("Error fetching the file list. Check folder permissions.");
     }

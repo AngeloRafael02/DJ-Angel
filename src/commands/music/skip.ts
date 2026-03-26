@@ -4,8 +4,8 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { players } from "../../services/players.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { players } from "../../core/queue.manager.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const skipCommand: Command = {
   data: new SlashCommandBuilder()
@@ -33,8 +33,8 @@ const skipCommand: Command = {
     try {
       guildData.player.stop();
 
-      const nextSongName = guildData.queue.length > 1 
-        ? guildData.queue[1].name 
+      const nextSongName = guildData.queue.length > 1
+        ? guildData.queue[1].name
         : "End of queue";
 
       await interaction.editReply(`⏭️ Skipped! Next up: **${nextSongName}**`);

@@ -4,10 +4,10 @@ import prism from "prism-media";
 import ffmpegStatic from "ffmpeg-static";
 
 import { Command } from "../../interfaces.js";
-import { drive } from "../../services/drive-service.js";
-import { players } from "../../services/players.js";
-import { getOriginalId } from "../../services/id-handler.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { drive } from "../../services/google-drive.js";
+import { players } from "../../core/queue.manager.js";
+import { getOriginalId } from "../../utils/crypto.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const ffmpegPath = ffmpegStatic as unknown as string | null;
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;

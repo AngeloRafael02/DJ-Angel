@@ -1,9 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { dbCache } from "../../services/search-cache-service.js";
-import { drive } from "../../services/drive-service.js";
-import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { dbCache } from "../../database/search-cache.js";
+import { drive } from "../../services/google-drive.js";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 type DriveFile = { id: string; name: string };
 

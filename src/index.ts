@@ -3,7 +3,7 @@ import { setDefaultAutoSelectFamily } from 'net';
 import * as dotenv from "dotenv";
 
 import { loadCommands } from "./loadCommands.js";
-import { dbCache } from "./services/search-cache-service.js";
+import { dbCache } from "./database/search-cache.js";
 
 dotenv.config();
 setDefaultAutoSelectFamily(false);

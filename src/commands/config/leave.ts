@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "
 import { getVoiceConnection } from "@discordjs/voice";
 
 import { Command } from "../../interfaces.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const leaveCommand: Command = {
   data: new SlashCommandBuilder()
@@ -11,9 +11,9 @@ const leaveCommand: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
 
     if (!isAuthorized(interaction)) {
-      await interaction.reply({ 
-        content: "You do not have permission to use this command.", 
-        flags: [MessageFlags.Ephemeral] 
+      await interaction.reply({
+        content: "You do not have permission to use this command.",
+        flags: [MessageFlags.Ephemeral]
       });
       return;
     }
@@ -39,7 +39,7 @@ const leaveCommand: Command = {
 
     await interaction.reply({
       content: "Left the voice channel.",
-      flags: [MessageFlags.Ephemeral] 
+      flags: [MessageFlags.Ephemeral]
     });
   },
 };

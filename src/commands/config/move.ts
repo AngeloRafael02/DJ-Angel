@@ -1,8 +1,8 @@
 import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { Command } from "../../interfaces.js";
-import { players } from "../../services/players.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { players } from "../../core/queue.manager.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const moveCommand: Command = {
   data: new SlashCommandBuilder()

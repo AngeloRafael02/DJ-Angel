@@ -5,10 +5,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { drive } from "../../services/drive-service.js";
-import { dbCache } from "../../services/search-cache-service.js";
-import { setPlaylistFolderId } from "../../services/playlist-store.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { drive } from "../../services/google-drive.js";
+import { dbCache } from "../../database/search-cache.js";
+import { setPlaylistFolderId } from "../../services/playlist.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 
 /**
@@ -72,7 +72,7 @@ const playlistCommand: Command = {
 
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-   try {
+    try {
       // 3. Update the ID and wipe the old cache
       setPlaylistFolderId(interaction.guild.id, folderId);
 

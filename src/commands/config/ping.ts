@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { isAuthorized } from "../../services/auth-service.js";
+import { isAuthorized } from "../../utils/auth.js";
 
 const pingCommand: Command = {
   data: new SlashCommandBuilder()

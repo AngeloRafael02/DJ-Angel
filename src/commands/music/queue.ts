@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { getVoiceConnection } from "@discordjs/voice"; // Added this import
 import { Command } from "../../interfaces.js";
-import { players } from "../../services/players.js";
+import { players } from "../../core/queue.manager.js";
 
 const queueCommand: Command = {
   data: new SlashCommandBuilder()
@@ -70,14 +70,14 @@ const queueCommand: Command = {
       .setTitle(`Queue for ${channelName}`)
       .setColor(0x00ae86)
       .setDescription(songList)
-      .setFooter({ 
-        text: `Page ${page} of ${totalPages}  •  ${guildData.queue.length} songs total` 
+      .setFooter({
+        text: `Page ${page} of ${totalPages}  •  ${guildData.queue.length} songs total`
       });
 
     if (totalPages > 1 && page === 1) {
-      embed.addFields({ 
-        name: "Tip", 
-        value: `Use \`/queue page:2\` to see more songs!` 
+      embed.addFields({
+        name: "Tip",
+        value: `Use \`/queue page:2\` to see more songs!`
       });
     }
 
