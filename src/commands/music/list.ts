@@ -4,6 +4,7 @@ import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
 import { getShortId } from "../../services/id-handler.js";
 import { isAuthorized } from "../../services/auth-service.js";
+import { cache } from "../../services/search-cache-service.js";
 
 type DriveFile = {
   id?: string | null;
@@ -31,29 +32,36 @@ const listCommand: Command = {
     }
 
     const page = interaction.options.getInteger("page") ?? 1;
+    const guildId = interaction.guildId ?? "DM_CHANNEL"; // Fallback for DMs
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      const allFiles: DriveFile[] = [];
-      let pageToken: string | undefined = undefined;
+      let allFiles = cache.get<DriveFile[]>(guildId);
 
-      do {
-        const response: any = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-          fields: "nextPageToken, files(id, name)",
-          orderBy: "name",
-          pageSize: 100, // Fetch up to 100 at a time to minimize API hits
-          pageToken,
-          // If using a Shared Drive, uncomment these:
-          // supportsAllDrives: true,
-          // includeItemsFromAllDrives: true,
-        });
+      if (!allFiles) {
+        allFiles = [];
+        let pageToken: string | undefined = undefined;
 
-        const batch: DriveFile[] = (response.data.files ?? []) as DriveFile[];
-        allFiles.push(...batch);
+        do {
+          const response: any = await drive.files.list({
+            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+            fields: "nextPageToken, files(id, name)",
+            orderBy: "name",
+            pageSize: 100, // Fetch up to 100 at a time to minimize API hits
+            pageToken,
+            // If using a Shared Drive, uncomment these:
+            // supportsAllDrives: true,
+            // includeItemsFromAllDrives: true,
+          });
 
-        pageToken = response.data.nextPageToken ?? undefined;
-      } while (pageToken);
+          const batch: DriveFile[] = (response.data.files ?? []) as DriveFile[];
+          allFiles.push(...batch);
+
+          pageToken = response.data.nextPageToken ?? undefined;
+        } while (pageToken);
+
+        cache.set(guildId, allFiles);
+      }
 
       if (allFiles.length === 0) {
         await interaction.editReply("No MP3 files found in the specified library.");
@@ -84,7 +92,7 @@ const listCommand: Command = {
         content.length > 2000 ? content.substring(0, 1990) + "..." : content
       );
 
-    } catch (error) {
+    } catch (error) { 
       console.error("Google Drive API Error:", error);
       await interaction.editReply("Error fetching the file list. Check folder permissions.");
     }
