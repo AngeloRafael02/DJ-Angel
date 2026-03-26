@@ -31,6 +31,7 @@ client.once(Events.ClientReady, async (readyClient) => {
         console.log(`✅ Registered /${cmd.data.name} command`);
       }
     }
+    console.log(`📁 Successfully loaded: ${commands.length}`);
   } catch (error) {
     console.error("Failed to register slash commands:", error);
   }
