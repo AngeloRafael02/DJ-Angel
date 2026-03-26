@@ -1,17 +1,16 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
+import { dbCache } from "../../services/search-cache-service.js";
 import { drive } from "../../services/drive-service.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist-store.js";
 import { isAuthorized } from "../../services/auth-service.js";
 
-function escapeDriveQueryString(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-}
+type DriveFile = { id: string; name: string };
 
 const searchCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("search")
-    .setDescription("Search for a song in the Google Drive MP3 library")
+    .setDescription("Search for a song in the cached library")
     .addStringOption((option) =>
       option
         .setName("query")
@@ -21,7 +20,7 @@ const searchCommand: Command = {
     .addIntegerOption((option) =>
       option
         .setName("page")
-        .setDescription("Page number (10 results per page)")
+        .setDescription("Page number")
         .setMinValue(1)
         .setRequired(false)
     ),
@@ -34,50 +33,45 @@ const searchCommand: Command = {
       return;
     }
 
-    const query = interaction.options.getString("query", true).trim();
+    const query = interaction.options.getString("query", true).toLowerCase().trim();
     const page = interaction.options.getInteger("page") ?? 1;
-
-    if (!query) {
-      await interaction.editReply("Please provide a search query.");
-      return;
-    }
-
+    const guildId = interaction.guildId ?? "DM_CHANNEL";
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
-    const escaped = escapeDriveQueryString(query);
 
     try {
-      const matches: { id: string; name: string }[] = [];
-      let pageToken: string | undefined = undefined;
+      let allFiles = dbCache.get<DriveFile[]>(guildId);
 
-      do {
-        const response: any = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false and fullText contains '${escaped}'`,
-          fields: "nextPageToken, files(id, name)",
-          orderBy: "name",
-          pageSize: 1000,
-          pageToken,
-        });
+      if (!allFiles) {
+        allFiles = [];
+        let pageToken: string | undefined = undefined;
+        do {
+          const response: any = await drive.files.list({
+            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+            fields: "nextPageToken, files(id, name)",
+            pageSize: 1000,
+            pageToken,
+          });
+          allFiles.push(...(response.data.files ?? []));
+          pageToken = response.data.nextPageToken ?? undefined;
+        } while (pageToken);
 
-        const files = response.data.files ?? [];
-        for (const f of files) {
-          if (f.id && f.name) matches.push({ id: f.id, name: f.name });
-        }
+        dbCache.set(guildId, allFiles);
+      }
 
-        pageToken = response.data.nextPageToken ?? undefined;
-      } while (pageToken);
+      const matches = allFiles.filter(file =>
+        file.name.toLowerCase().includes(query)
+      );
 
       if (matches.length === 0) {
-        await interaction.editReply(`No matches found for **${query}**.`);
+        await interaction.editReply(`No matches found for "**${query}**".`);
         return;
       }
 
       const pageSize = 10;
-      const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+      const totalPages = Math.ceil(matches.length / pageSize);
 
       if (page > totalPages) {
-        await interaction.editReply(
-          `That page doesn't exist. There ${totalPages === 1 ? "is" : "are"} **${totalPages}** page${totalPages === 1 ? "" : "s"} of results for **${query}**.`
-        );
+        await interaction.editReply(`Page ${page} doesn't exist. Total pages: **${totalPages}**.`);
         return;
       }
 
@@ -88,19 +82,17 @@ const searchCommand: Command = {
         .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${file.id}\`)`)
         .join("\n");
 
-      const content = `🔎 **Search results** for **${query}** (Page ${page}/${totalPages})\n\n${list}`;
+      const content = `🔎 **Search Results** for "**${query}**" (Page ${page}/${totalPages})\n\n${list}`;
 
       await interaction.editReply(
         content.length > 2000 ? content.substring(0, 1990) + "..." : content
       );
+
     } catch (error) {
-      console.error("Google Drive API Error:", error);
-      await interaction.editReply(
-        "There was an error searching the library. Ensure the folder is public or shared with the service account."
-      );
+      console.error("Search Error:", error);
+      await interaction.editReply("An error occurred while searching the cached library.");
     }
   },
 };
 
 export default searchCommand;
-
