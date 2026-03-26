@@ -129,7 +129,7 @@ async function playNextInQueue(guildId: string, interaction: any) {
     const driveStream = mediaResponse.data as any;
 
     if (driveStream.readableHighWaterMark) {
-      driveStream._readableState.highWaterMark = 1024 * 1024;
+      driveStream._readableState.highWaterMark = 1024 * 1024 * 2;
     }
 
     if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {
@@ -145,9 +145,14 @@ async function playNextInQueue(guildId: string, interaction: any) {
         "-f", "s16le",
         "-ar", "48000",
         "-ac", "2",
-        "-probesize", "32768",
+        "-probesize", "32K",
         "-threads", "1",
-        "-af", "volume=0.5"
+        "-filter:a", "volume=0.5",
+        "-af", "aresample=async=1",
+        "-map_metadata", "-1",
+        "-vn",
+        "-sn",
+        "-dn",
       ],
     });
 
@@ -160,6 +165,14 @@ async function playNextInQueue(guildId: string, interaction: any) {
     const resource = createAudioResource(opusStream, {
       inputType: StreamType.Opus,
       inlineVolume: false
+    });
+
+    await new Promise((resolve) => {
+      const timeout = setTimeout(resolve, 1000);
+      opusStream.once('readable', () => {
+        clearTimeout(timeout);
+        resolve(true);
+      });
     });
 
     guildQueue.player.play(resource);
