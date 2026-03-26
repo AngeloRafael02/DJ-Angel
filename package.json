@@ -20,7 +20,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node --trace-warnings --loader ts-node/esm src/index.ts"
+    "start": "tsx src/index.ts"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
@@ -39,7 +39,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/node": "^25.5.0",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
 }
