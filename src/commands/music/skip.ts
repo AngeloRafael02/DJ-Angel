@@ -4,8 +4,8 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { players } from "../../core/queue.manager.js";
 import { isAuthorized } from "../../utils/auth.js";
+import { lavalink } from "../../index.js";
 
 const skipCommand: Command = {
   data: new SlashCommandBuilder()
@@ -23,21 +23,24 @@ const skipCommand: Command = {
     const guildId = interaction.guildId;
     if (!guildId) return;
 
-    const guildData = players.get(guildId);
+    const player = lavalink.getPlayer(guildId);
 
-    if (!guildData || !guildData.player) {
+    if (!player || !player.queue.current) {
       await interaction.editReply("There is no music playing to skip.");
       return;
     }
 
     try {
-      guildData.player.stop();
+      const currentTitle = player.queue.current.info.title;
 
-      const nextSongName = guildData.queue.length > 1
-        ? guildData.queue[1].name
-        : "End of queue";
+      const nextTrack = player.queue.tracks[0];
+      const nextMsg = nextTrack
+        ? `Next up: **${nextTrack.info.title}**`
+        : "The queue is now empty.";
 
-      await interaction.editReply(`⏭️ Skipped! Next up: **${nextSongName}**`);
+      await player.skip();
+
+      await interaction.editReply(`⏭️ Skipped **${currentTitle}**\n${nextMsg}`);
     } catch (error) {
       console.error("[Skip Command Error]:", error);
       await interaction.editReply("An error occurred while trying to skip the song.");
