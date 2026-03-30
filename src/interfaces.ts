@@ -3,9 +3,10 @@ import { SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcom
 
 export type Store = Record<string, string>;
 
-export type DriveFile = { 
-  id: string; 
-  name: string 
+export type DriveFile = {
+  id: string;
+  name: string
+  createdTime?: string;
 };
 
 export interface Command {

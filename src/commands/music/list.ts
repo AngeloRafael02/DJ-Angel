@@ -18,6 +18,18 @@ const listCommand: Command = {
         .setDescription("Page number (10 results per page)")
         .setMinValue(1)
         .setRequired(false)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("sort")
+        .setDescription("Choose the library order")
+        .setRequired(false)
+        .addChoices(
+          { name: "Alphabetical (A-Z)", value: "name_asc" },
+          { name: "Reverse Alphabetical (Z-A)", value: "name_desc" },
+          { name: "Newest Added First", value: "date_desc" },
+          { name: "Oldest Added First", value: "date_asc" }
+        )
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -29,6 +41,7 @@ const listCommand: Command = {
     }
 
     const page = interaction.options.getInteger("page") ?? 1;
+    const sort = interaction.options.getString("sort") ?? "name_asc";
     const guildId = interaction.guildId ?? "DM_CHANNEL"; // Fallback for DMs
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
@@ -42,9 +55,9 @@ const listCommand: Command = {
         do {
           const response: any = await drive.files.list({
             q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name)",
+            fields: "nextPageToken, files(id, name, createdTime)",
             orderBy: "name",
-            pageSize: 100, // Fetch up to 100 at a time to minimize API hits
+            pageSize: 100,
             pageToken,
             // If using a Shared Drive, uncomment these:
             // supportsAllDrives: true,
@@ -60,13 +73,27 @@ const listCommand: Command = {
         dbCache.set(guildId, allFiles);
       }
 
-      if (allFiles.length === 0) {
-        await interaction.editReply("No MP3 files found in the specified library.");
+      const sortedFiles = [...allFiles].sort((a, b) => {
+        switch (sort) {
+          case "name_desc":
+            return b.name!.localeCompare(a.name!);
+          case "date_desc":
+            return new Date(b.createdTime!).getTime() - new Date(a.createdTime!).getTime();
+          case "date_asc":
+            return new Date(a.createdTime!).getTime() - new Date(b.createdTime!).getTime();
+          case "name_asc":
+          default:
+            return a.name!.localeCompare(b.name!);
+        }
+      });
+
+      if (sortedFiles.length === 0) {
+        await interaction.editReply("No MP3 files found.");
         return;
       }
 
       const pageSize = 10;
-      const totalPages = Math.max(1, Math.ceil(allFiles.length / pageSize));
+      const totalPages = Math.max(1, Math.ceil(sortedFiles.length / pageSize));
 
       if (page > totalPages) {
         await interaction.editReply(`Page ${page} doesn't exist. Max pages: **${totalPages}**.`);
@@ -74,7 +101,7 @@ const listCommand: Command = {
       }
 
       const startIndex = (page - 1) * pageSize;
-      const pageFiles = allFiles.slice(startIndex, startIndex + pageSize);
+      const pageFiles = sortedFiles.slice(startIndex, startIndex + pageSize);
 
       const fileList = pageFiles
         .map((file, index) => {
@@ -83,7 +110,14 @@ const listCommand: Command = {
         })
         .join("\n");
 
-      const content = `🎵 **Music Library** (Page ${page}/${totalPages})\n\n${fileList}`;
+      const sortLabel = {
+        name_asc: "A-Z",
+        name_desc: "Z-A",
+        date_desc: "Newest",
+        date_asc: "Oldest"
+      }[sort];
+
+      const content = `🎵 **Library** [Sorted by: ${sortLabel}] (Page ${page}/${totalPages})\n\n${fileList}`;
 
       await interaction.editReply(
         content.length > 2000 ? content.substring(0, 1990) + "..." : content
