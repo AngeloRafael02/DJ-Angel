@@ -59,9 +59,6 @@ const listCommand: Command = {
             orderBy: "name",
             pageSize: 100,
             pageToken,
-            // If using a Shared Drive, uncomment these:
-            // supportsAllDrives: true,
-            // includeItemsFromAllDrives: true,
           });
 
           const batch: DriveFile[] = (response.data.files ?? []) as DriveFile[];
@@ -70,7 +67,6 @@ const listCommand: Command = {
           pageToken = response.data.nextPageToken ?? undefined;
         } while (pageToken);
 
-        dbCache.set(guildId, allFiles);
       }
 
       const sortedFiles = [...allFiles].sort((a, b) => {
