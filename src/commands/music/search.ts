@@ -5,6 +5,7 @@ import { drive } from "../../services/google-drive.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { DriveFile } from "../../interfaces.js";
+import { getShortId } from "../../utils/crypto.js";
 
 const searchCommand: Command = {
   data: new SlashCommandBuilder()
@@ -45,7 +46,7 @@ const searchCommand: Command = {
         let pageToken: string | undefined = undefined;
         do {
           const response: any = await drive.files.list({
-            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+            q: `mimeType = 'audio/mpeg' and trashed = false`,
             fields: "nextPageToken, files(id, name)",
             pageSize: 1000,
             pageToken,
@@ -78,7 +79,7 @@ const searchCommand: Command = {
       const pageMatches = matches.slice(startIndex, startIndex + pageSize);
 
       const list = pageMatches
-        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${file.id}\`)`)
+        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${getShortId(file.id)}\`)`)
         .join("\n");
 
       const content = `🔎 **Search Results** for "**${query}**" (Page ${page}/${totalPages})\n\n${list}`;
