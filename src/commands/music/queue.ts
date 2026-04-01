@@ -4,9 +4,8 @@ import {
   SlashCommandBuilder,
   EmbedBuilder,
 } from "discord.js";
-import { getVoiceConnection } from "@discordjs/voice"; // Added this import
 import { Command } from "../../interfaces.js";
-import { players } from "../../core/queue.manager.js";
+import { lavalink } from "../../index.js"; // Import your lavalink instance
 
 const queueCommand: Command = {
   data: new SlashCommandBuilder()
@@ -23,63 +22,59 @@ const queueCommand: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-    if (!interaction.guildId || !interaction.guild) return;
+    if (!interaction.guildId) return;
 
-    const connection = getVoiceConnection(interaction.guildId);
-    if (!connection) {
-      await interaction.editReply(
-        "I'm not connected to a voice channel. Use `/move` first to see a queue."
-      );
+    const player = lavalink.getPlayer(interaction.guildId);
+
+    if (!player || !player.queue.current) {
+      await interaction.editReply("The queue is currently empty! 📭");
       return;
     }
 
-    const channelId = connection.joinConfig.channelId;
-    const voiceChannel = interaction.guild.channels.cache.get(channelId || "");
-    const channelName = voiceChannel?.name || "Voice Channel";
-
-    const guildData = players.get(interaction.guildId);
-
-    if (!guildData || guildData.queue.length === 0) {
-      await interaction.editReply(`The queue for **${channelName}** is currently empty! 📭`);
-      return;
-    }
+    const currentTrack = player.queue.current;
+    const tracks = player.queue.tracks;
+    const totalSongs = tracks.length + 1;
 
     const pageSize = 10;
     const page = interaction.options.getInteger("page") ?? 1;
-    const totalPages = Math.ceil(guildData.queue.length / pageSize);
+    const totalPages = Math.ceil(totalSongs / pageSize) || 1;
 
     if (page > totalPages) {
-      await interaction.editReply(
-        `That page doesn't exist. There are only **${totalPages}** page(s) available.`
-      );
+      await interaction.editReply(`Page ${page} doesn't exist. Max pages: **${totalPages}**`);
       return;
     }
 
     const startIndex = (page - 1) * pageSize;
-    const pageSongs = guildData.queue.slice(startIndex, startIndex + pageSize);
+    let queueString = "";
 
-    const songList = pageSongs
-      .map((song, index) => {
-        const absoluteIndex = startIndex + index;
-        const prefix = absoluteIndex === 0 ? "▶️ **Now Playing:**" : `${absoluteIndex}.`;
-        return `${prefix} ${song.name}`;
-      })
-      .join("\n");
-
-    const embed = new EmbedBuilder()
-      .setTitle(`Queue for ${channelName}`)
-      .setColor(0x00ae86)
-      .setDescription(songList)
-      .setFooter({
-        text: `Page ${page} of ${totalPages}  •  ${guildData.queue.length} songs total`
-      });
-
-    if (totalPages > 1 && page === 1) {
-      embed.addFields({
-        name: "Tip",
-        value: `Use \`/queue page:2\` to see more songs!`
-      });
+    if (page === 1) {
+      queueString += `▶️ **Now Playing:** ${currentTrack.info.title}\n\n`;
     }
+
+    const sliceStart = page === 1 ? 0 : startIndex - 1;
+    const sliceEnd = sliceStart + (page === 1 ? pageSize - 1 : pageSize);
+    const pageTracks = tracks.slice(sliceStart, sliceEnd);
+
+    if (pageTracks.length > 0) {
+      queueString += pageTracks
+        .map((track, index) => {
+          const position = page === 1 ? index + 1 : sliceStart + index + 1;
+          return `**${position}.** ${track.info.title}`;
+        })
+        .join("\n");
+    } else if (page === 1 && tracks.length === 0) {
+      queueString += "_No more songs in queue._";
+    }
+
+    const voiceChannel = interaction.guild?.channels.cache.get(player.voiceChannelId!);
+    
+    const embed = new EmbedBuilder()
+      .setTitle(`Queue for ${voiceChannel?.name || "Voice Channel"}`)
+      .setColor(0x00ae86)
+      .setDescription(queueString)
+      .setFooter({
+        text: `Page ${page} of ${totalPages}  •  ${totalSongs} songs total`
+      });
 
     await interaction.editReply({ embeds: [embed] });
   },

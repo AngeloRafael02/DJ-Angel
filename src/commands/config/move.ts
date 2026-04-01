@@ -1,13 +1,12 @@
-import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
-import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
+import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, VoiceBasedChannel } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { players } from "../../core/queue.manager.js";
 import { isAuthorized } from "../../utils/auth.js";
+import { lavalink } from "../../index.js";
 
 const moveCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("move")
-    .setDescription("Make the bot join a voice channel")
+    .setDescription("Make the bot join or move to a specific voice channel")
     .addChannelOption((option) =>
       option
         .setName("channel")
@@ -23,82 +22,61 @@ const moveCommand: Command = {
       return;
     }
 
-    if (!interaction.inGuild() || !interaction.guild) {
+    if (!interaction.guildId || !interaction.guild) {
       await interaction.editReply("This command can only be used in a server.");
       return;
     }
 
-    const channelOption = interaction.options.getChannel("channel", true);
-    const channel = await interaction.guild.channels.fetch(channelOption.id);
+    const channel = interaction.options.getChannel("channel", true) as VoiceBasedChannel;
 
-    if (!channel || (channel.type !== ChannelType.GuildVoice && channel.type !== ChannelType.GuildStageVoice)) {
-      await interaction.editReply("Please pick a valid voice channel.");
-      return;
-    }
-
-    const perms = channel.permissionsFor(interaction.guild.members.me!);
-    if (!perms?.has(PermissionFlagsBits.Connect) || !perms?.has(PermissionFlagsBits.Speak)) {
+    const permissions = channel.permissionsFor(interaction.guild.members.me!);
+    if (!permissions?.has([PermissionFlagsBits.Connect, PermissionFlagsBits.Speak])) {
       await interaction.editReply("I need **Connect** and **Speak** permissions to join that channel!");
       return;
     }
 
-    const existingConnection = getVoiceConnection(interaction.guild.id);
-    if (existingConnection) {
-      if (existingConnection.joinConfig.channelId === channel.id &&
-        existingConnection.state.status === VoiceConnectionStatus.Ready) {
-        await interaction.editReply(`I'm already in ${channel}!`);
-        return;
-      }
-      existingConnection.destroy();
-    }
-
-    const connection = joinVoiceChannel({
-      channelId: channel.id,
-      guildId: interaction.guild.id,
-      adapterCreator: interaction.guild.voiceAdapterCreator,
-      selfDeaf: true,
-      selfMute: false,
-    });
-
     try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 50_000);
+      let player = lavalink.getPlayer(interaction.guildId);
 
-      if (channel.type === ChannelType.GuildStageVoice) {
-        await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
-          console.warn("Failed to set suppressed: false.");
+      if (!player) {
+        player = lavalink.createPlayer({
+          guildId: interaction.guildId,
+          voiceChannelId: channel.id,
+          textChannelId: interaction.channelId!,
+          selfDeaf: true,
         });
       }
 
-      const guildData = players.get(interaction.guild.id);
-      if (guildData) {
-        connection.subscribe(guildData.player);
-
-        const queueSize = guildData.queue.length;
-        const statusMsg = queueSize > 0
-          ? `Successfully moved to ${channel}. Resuming queue (${queueSize} songs).`
-          : `Successfully moved to ${channel}.`;
-
-        await interaction.editReply(statusMsg);
-      } else {
-        await interaction.editReply(`Successfully moved to ${channel}. Ready to play!`);
+      if (player.voiceChannelId === channel.id && player.connected) {
+        await interaction.editReply(`I'm already in ${channel}!`);
+        return;
       }
+
+      player.voiceChannelId = channel.id;
+      if (!player.connected) {
+        await player.connect();
+      } else {
+        // If already connected, some libraries require a re-connect call to move
+        await player.connect();
+      }
+
+      if (channel.type === ChannelType.GuildStageVoice) {
+        await interaction.guild.members.me?.voice.setSuppressed(false).catch(() => {
+          console.warn("Could not automatically become a speaker in Stage channel.");
+        });
+      }
+
+      const queueCount = player.queue.tracks.length + (player.queue.current ? 1 : 0);
+      const response = queueCount > 0
+        ? `Moved to ${channel}. Continuing playback of **${queueCount}** tracks.`
+        : `Joined ${channel}. Ready to play!`;
+
+      await interaction.editReply(response);
 
     } catch (error) {
-      connection.destroy();
       console.error("[Move Error]:", error);
-      await interaction.editReply("Failed to connect to the voice channel (Timeout). Check my permissions or UDP settings.");
+      await interaction.editReply("An error occurred while trying to move channels.");
     }
-
-    connection.on(VoiceConnectionStatus.Disconnected, async () => {
-      try {
-        await Promise.race([
-          entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-          entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
-        ]);
-      } catch (e) {
-        connection.destroy();
-      }
-    });
   },
 };
 

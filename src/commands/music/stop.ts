@@ -1,15 +1,12 @@
-import {
-  ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder,
-} from "discord.js";
-import { getVoiceConnection } from "@discordjs/voice";
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { Command } from "../../interfaces.js";
-import { players } from "../../core/queue.manager.js";
 import { isAuthorized } from "../../utils/auth.js";
+import { lavalink } from "../../index.js";
 
 const stopCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("stop")
-    .setDescription("Stops the music and clears the entire queue"),
+    .setDescription("Stops the music, clears the queue, and disconnects the bot"),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
@@ -22,24 +19,17 @@ const stopCommand: Command = {
     const guildId = interaction.guildId;
     if (!guildId) return;
 
-    const connection = getVoiceConnection(guildId);
-    if (!connection) {
-      await interaction.editReply("I am not currently in a voice channel.");
-      return;
-    }
+    const player = lavalink.getPlayer(guildId);
 
-    const guildData = players.get(guildId);
-    if (!guildData) {
-      await interaction.editReply("The music is already stopped and the queue is clear.");
+    if (!player) {
+      await interaction.editReply("I am not currently connected to a voice channel.");
       return;
     }
 
     try {
-      guildData.queue = [];
-      guildData.player.stop(true);
-      players.delete(guildId);
+      await player.destroy();
 
-      await interaction.editReply("⏹️ Music stopped and the queue has been cleared.");
+      await interaction.editReply("⏹️ Playback stopped, queue cleared, and disconnected.");
     } catch (error) {
       console.error("[Stop Command Error]:", error);
       await interaction.editReply("An error occurred while trying to stop the music.");

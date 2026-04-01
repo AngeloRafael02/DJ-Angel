@@ -1,17 +1,10 @@
 import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, } from "discord.js";
-import { createAudioPlayer, createAudioResource, getVoiceConnection, StreamType, NoSubscriberBehavior, VoiceConnectionStatus, entersState, AudioPlayerError, AudioPlayerState, AudioPlayerStatus } from "@discordjs/voice";
-import prism from "prism-media";
-import ffmpegStatic from "ffmpeg-static";
 
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/google-drive.js";
-import { players } from "../../core/queue.manager.js";
 import { getOriginalId } from "../../utils/crypto.js";
 import { isAuthorized } from "../../utils/auth.js";
-
-const ffmpegPath = ffmpegStatic as unknown as string | null;
-if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
-
+import { lavalink } from '../../index.js'
 
 
 const playCommand: Command = {
@@ -33,154 +26,71 @@ const playCommand: Command = {
       return;
     }
 
-    if (!interaction.guildId) return;
-
-    if (!interaction.inGuild() || !interaction.guild) {
-      await interaction.editReply("This command can only be used in a server.");
-      return;
-    }
-
-    const connection = getVoiceConnection(interaction.guild.id);
-    if (!connection) {
-      await interaction.editReply(
-        "I'm not connected to a voice channel. Use `/move` first."
-      );
-      return;
-    }
-
-    connection.on('stateChange', (oldState, newState) => {
-      console.log(`[Voice Debug] Transition: ${oldState.status} => ${newState.status}`);
-    });
-
-    if (connection.state.status === VoiceConnectionStatus.Disconnected) {
-      await interaction.editReply("I'm disconnected. Please use `/move` to bring me back.");
-      return;
-    }
-
-    const songId = getOriginalId(interaction.options.getString("songid", true).trim());
     const guildId = interaction.guildId!;
+    const member = interaction.guild?.members.cache.get(interaction.user.id);
+    const voiceChannelId = member?.voice.channelId;
+
+    if (!voiceChannelId) {
+      await interaction.editReply("You must be in a voice channel first!");
+      return;
+    }
 
     try {
-      if (connection.state.status !== VoiceConnectionStatus.Ready) {
-        await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
-      }
-
-      const metaResponse = await drive.files.get({
-        fileId: songId,
-        fields: "id, name, mimeType",
+      const player = lavalink.createPlayer({
+        guildId: guildId,
+        voiceChannelId: voiceChannelId,
+        textChannelId: interaction.channelId!,
+        selfDeaf: true,
       });
 
-      const file = metaResponse.data;
-      if (!file?.mimeType?.includes("audio")) {
-        await interaction.editReply(`Invalid file type: ${file?.mimeType}`);
+      if (!player.connected) {
+        await player.connect();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const songId = getOriginalId(interaction.options.getString("songid", true).trim());
+      const port = process.env.STREAM_PORT || 3001;
+      const ip = process.env.STREAM_HOST || "127.0.0.1"
+      const secret = process.env.STREAM_SECRET;
+      const trackUrl = `http://${ip}:${port}/stream/${songId}?token=${secret}`;
+
+      console.log(`[TRACK URL]: ${trackUrl}`)
+      const res = await player.search({ query: trackUrl, source: "http" }, interaction.user);
+      console.log(`[Lavalink Search] LoadType: ${res.loadType}`);
+      if (res.exception) {
+        console.error(`[Lavalink Search] Exception:`, res.exception);
+      }
+
+      if (!res.tracks.length) {
+        console.warn(`[Lavalink Search] No tracks found for URL. Check if HTTP source is enabled in Lavalink application.yml`);
+        await interaction.editReply("Lavalink couldn't process the stream.");
         return;
       }
 
-      let guildQueue = players.get(guildId);
-
-      if (!guildQueue) {
-        const player = createAudioPlayer({
-          behaviors: { noSubscriber: NoSubscriberBehavior.Play },
-        });
-
-        connection.subscribe(player);
-        guildQueue = { player, queue: [] };
-        players.set(guildId, guildQueue);
-
-        player.on(AudioPlayerStatus.Idle, () => {
-          const nextSong = guildQueue!.queue.shift();
-          if (guildQueue!.queue.length > 0) {
-            playNextInQueue(guildId, interaction);
-          }
-        });
+      if (!res.tracks.length) {
+        await interaction.editReply("Lavalink couldn't process the stream.");
+        return;
       }
 
-      guildQueue.queue.push({ id: songId!, name: file.name || "Unknown" });
+      const track = res.tracks[0];
 
-      if (guildQueue.player.state.status === AudioPlayerStatus.Idle) {
-        await playNextInQueue(guildId, interaction);
-        await interaction.editReply(`▶️ Now playing: **${file.name}**`);
+      const meta = await drive.files.get({ fileId: songId, fields: "name" });
+      track.info.title = meta.data.name || "Drive Song";
+
+      player.queue.add(track);
+
+      if (!player.playing && !player.paused) {
+        await player.play();
+        await interaction.editReply(`▶️ Now playing: **${track.info.title}**`);
       } else {
-        await interaction.editReply(`📝 Added to queue: **${file.name}** (Position: ${guildQueue.queue.length - 1})`);
+        await interaction.editReply(`📝 Added to queue: **${track.info.title}**`);
       }
-    } catch (error: any) {
-      console.error("[Execution Error]:", error);
-      await interaction.editReply("Failed to play.");
+
+    } catch (error) {
+      console.error("Lavalink Play Error:", error);
+      await interaction.editReply("An error occurred while trying to play.");
     }
   },
 };
-
-async function playNextInQueue(guildId: string, interaction: any) {
-  const guildQueue = players.get(guildId);
-  if (!guildQueue || guildQueue.queue.length === 0) return;
-
-  const currentSong = guildQueue.queue[0];
-
-  try {
-    const mediaResponse: any = await drive.files.get(
-      { fileId: currentSong.id, alt: "media" },
-      {
-        responseType: "stream",
-        maxContentLength: Infinity,
-        adapter: undefined
-      }
-    );
-
-    const driveStream = mediaResponse.data as any;
-
-    if (driveStream.readableHighWaterMark) {
-      driveStream._readableState.highWaterMark = 1024 * 1024 * 2;
-    }
-
-    if (!mediaResponse.data || typeof mediaResponse.data.pipe !== 'function') {
-      throw new Error("Google Drive did not return a valid readable stream.");
-    }
-
-    const transcoder = new prism.FFmpeg({
-      args: [
-        "-analyzeduration", "0",
-        "-loglevel", "0",
-        "-i", "pipe:0",
-        "-vn",
-        "-f", "s16le",
-        "-ar", "48000",
-        "-ac", "2",
-        "-probesize", "32K",
-        "-threads", "1",
-        "-filter:a", "volume=0.5",
-        "-af", "aresample=async=1",
-        "-map_metadata", "-1",
-        "-vn",
-        "-sn",
-        "-dn",
-      ],
-    });
-
-    const opusEncoder = new prism.opus.Encoder({ rate: 48000, channels: 2, frameSize: 960 });
-
-    const opusStream = mediaResponse.data.pipe(
-      transcoder, { end: false }).pipe(opusEncoder);
-
-
-    const resource = createAudioResource(opusStream, {
-      inputType: StreamType.Opus,
-      inlineVolume: false
-    });
-
-    await new Promise((resolve) => {
-      const timeout = setTimeout(resolve, 1000);
-      opusStream.once('readable', () => {
-        clearTimeout(timeout);
-        resolve(true);
-      });
-    });
-
-    guildQueue.player.play(resource);
-  } catch (error) {
-    console.error("Queue Error:", error);
-    guildQueue.queue.shift();
-    playNextInQueue(guildId, interaction);
-  }
-}
 
 export default playCommand;
