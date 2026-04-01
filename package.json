@@ -20,7 +20,15 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "prepm2:start": "node -e \"require('fs').mkdirSync('logs',{recursive:true})\"",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop dj-angel",
+    "pm2:restart": "pm2 restart dj-angel",
+    "pm2:delete": "pm2 delete dj-angel",
+    "pm2:logs": "pm2 logs dj-angel",
+    "pm2:logrotate:install": "pm2 install pm2-logrotate",
+    "pm2:logrotate:configure": "pm2 set pm2-logrotate:max_size 10M && pm2 set pm2-logrotate:retain 7 && pm2 set pm2-logrotate:compress true"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",
@@ -34,6 +42,7 @@
     "googleapis": "^171.4.0",
     "lavalink-client": "^2.9.9",
     "libsodium-wrappers": "^0.8.2",
+    "pm2": "^6.0.14",
     "prism-media": "^1.3.5",
     "sodium-native": "^5.1.0"
   },
