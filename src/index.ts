@@ -4,7 +4,7 @@ import { setDefaultAutoSelectFamily } from 'net';
 import * as dotenv from "dotenv";
 import express from 'express';
 
-import { loadCommands } from "./loadCommands.js";
+import { loadCommands } from "./core/load-commands.js";
 import { dbCache } from "./database/search-cache.js";
 import { streamRouter } from "./routes/stream.js";
 

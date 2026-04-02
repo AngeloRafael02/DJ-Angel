@@ -1,7 +1,7 @@
 import { readdirSync } from "fs";
 import { dirname, join, relative } from "path";
 import { pathToFileURL, fileURLToPath } from "url";
-import type { Command } from "./interfaces.js";
+import type { Command } from "../interfaces.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,8 +10,8 @@ const __dirname = dirname(__filename);
  * Scans the commands folder and dynamically imports all command modules.
  * Each file must export a default Command object.
  */
-export async function loadCommands(): Promise<Command[]> {
-  const commandsDir = join(__dirname, "commands");
+export const loadCommands = async (): Promise<Command[]> => {
+  const commandsDir = join(__dirname, "../commands");
   const files: string[] = [];
 
   const walk = (dir: string) => {
