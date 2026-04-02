@@ -1,8 +1,10 @@
 # To Do
 
 ## Unfinished
-- /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - DONE
+- try adding buttons per song in `/list` to auto-play song / send song to queue
 - create playlist groups by putting songs on sub folders inside public folder
+- `src/database/id-registry.ts` and  `src/database/search-cache.ts` mey be mergedimplemented cleaner since ids on both tables are duplicate
+- /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE

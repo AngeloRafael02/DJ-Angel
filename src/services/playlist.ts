@@ -1,3 +1,7 @@
+/**
+ * Handles the root Folder playlist management
+ */
+
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import path from "path";
 import { dbCache } from "../database/search-cache.js";
@@ -5,7 +9,7 @@ import { Store } from "../interfaces.js";
 
 const STORE_PATH = path.join(process.cwd(), "playlist-store.json");
 
-function loadStore(): Store {
+const loadStore = (): Store => {
   if (!existsSync(STORE_PATH)) return {};
   try {
     const raw = readFileSync(STORE_PATH, "utf-8");
@@ -16,7 +20,7 @@ function loadStore(): Store {
   }
 }
 
-function saveStore(store: Store): void {
+const saveStore = (store: Store): void => {
   writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf-8");
 }
 
@@ -29,7 +33,7 @@ export const DEFAULT_FOLDER_ID = "1jFmAf8WOwd9Ph74Ql8jSpBf_7KZdG73w";
  * Get the Google Drive folder ID for the playlist in this guild.
  * Returns DEFAULT_FOLDER_ID if none is set.
  */
-export function getPlaylistFolderId(guildId: string): string {
+export const getPlaylistFolderId = (guildId: string): string => {
   const store = loadStore();
   return store[guildId] ?? DEFAULT_FOLDER_ID;
 }
@@ -37,7 +41,7 @@ export function getPlaylistFolderId(guildId: string): string {
 /**
  * Set the Google Drive folder ID for the playlist in this guild.
  */
-export function setPlaylistFolderId(guildId: string, folderId: string): void {
+export const setPlaylistFolderId = (guildId: string, folderId: string): void => {
   const store = loadStore();
 
   if (store[guildId] !== folderId) {

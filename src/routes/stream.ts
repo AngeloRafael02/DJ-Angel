@@ -1,4 +1,6 @@
-// src/routes/stream.ts - DEBUG VERSION
+/**
+ * Proxy Stream Router To connect Lavalink and Google Drive API
+ */
 import { Router } from 'express';
 import { drive } from '../services/google-drive.js';
 

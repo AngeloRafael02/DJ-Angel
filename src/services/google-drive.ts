@@ -1,3 +1,7 @@
+/**
+ * Handles Google Drive API Authentications
+ */
+
 import { google } from 'googleapis';
 import path from 'path';
 

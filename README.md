@@ -13,3 +13,15 @@ The Project should look work like this [chart](https://lucid.app/lucidchart/f290
     - dj-angel-bot.json (stores Google API Creadentials)
 - The Machine that hosts the source code must also have the following applications:
     - [Lavalink](https://github.com/lavalink-devs/Lavalink) which means that [Java](https://www.java.com/en/download/) must also required
+
+
+## SOURCE CODE
+src/                # Root Folder
+├── commands/       # Stores all Discord command files
+│   ├── config/
+│   └── music/
+├── core/           # Stores all important repeated processes
+├── database/       # Handles local sqlite3 database logic (SQL)
+├── routes/         # Proxy Stream Path to Connect Lavalink and Google Drive API
+├── services/       # Handles all logic from outside the Bot
+└── utils/          # Stores all miscellaneous functions
