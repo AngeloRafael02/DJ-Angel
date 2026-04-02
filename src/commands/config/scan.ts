@@ -3,6 +3,7 @@ import { Command } from "../../interfaces.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
+import { fetchAllMp3sRecursive } from "../../core/cache.js";
 
 const scanCommand: Command = {
   cooldown: 5,
@@ -22,26 +23,10 @@ const scanCommand: Command = {
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      const allFiles: DriveFile[] = [];
-      let pageToken: string | undefined = undefined;
-
-      do {
-        const response: any = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-          fields: "nextPageToken, files(id, name, createdTime)",
-          orderBy: "name",
-          pageSize: 100,
-          pageToken,
-        });
-
-        const batch: DriveFile[] = (response.data.files ?? []) as DriveFile[];
-        allFiles.push(...batch);
-
-        pageToken = response.data.nextPageToken ?? undefined;
-      } while (pageToken);
+      const allFiles = await fetchAllMp3sRecursive(folderId);
 
       // 3. Overwrite the cache in SQLite
-      dbCache.set(guildId, allFiles);
+      dbCache.set(guildId, allFiles, 60 * 60 * 1000);
 
       await interaction.editReply(`✅ Library refreshed! Found **${allFiles.length}** MP3 files.`);
       

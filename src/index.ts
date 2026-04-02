@@ -98,7 +98,7 @@ async function bootstrap() {
     lavalink.on("trackStart", (player, track) => {
       console.log(`[Lavalink] 🎶 Started playing: ${track!.info.title}`);
     });
-    
+
 
     lavalink.on("trackError", (player, track, payload) => {
       console.error(`[Lavalink] ❌ Track Error for ${track!.info.title}:`, payload.error);

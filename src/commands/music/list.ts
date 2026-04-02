@@ -6,6 +6,7 @@ import { getShortId } from "../../utils/crypto.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
 import { DriveFile } from "../../interfaces.js";
+import { fetchAllMp3sRecursive } from "../../core/cache.js";
 
 const listCommand: Command = {
   data: new SlashCommandBuilder()
@@ -48,24 +49,8 @@ const listCommand: Command = {
       let allFiles = dbCache.get<DriveFile[]>(guildId);
 
       if (!allFiles) {
-        allFiles = [];
-        let pageToken: string | undefined = undefined;
-
-        do {
-          const response: any = await drive.files.list({
-            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name, createdTime)",
-            orderBy: "name",
-            pageSize: 100,
-            pageToken,
-          });
-
-          const batch: DriveFile[] = (response.data.files ?? []) as DriveFile[];
-          allFiles.push(...batch);
-
-          pageToken = response.data.nextPageToken ?? undefined;
-        } while (pageToken);
-
+        allFiles = await fetchAllMp3sRecursive(folderId);
+        dbCache.set(guildId, allFiles, 60 * 60 * 1000);
       }
 
       const sortedFiles = [...allFiles].sort((a, b) => {
