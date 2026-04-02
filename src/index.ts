@@ -38,8 +38,7 @@ export const lavalink = new LavalinkManager({
     },
   ],
   sendToShard: (guildId, payload) => {
-    const guild = client.guilds.cache.get(guildId);
-    if (guild) guild.shard.send(payload);
+    client.guilds.cache.get(guildId)?.shard.send(payload);
   },
 });
 
@@ -99,6 +98,7 @@ async function bootstrap() {
     lavalink.on("trackStart", (player, track) => {
       console.log(`[Lavalink] 🎶 Started playing: ${track!.info.title}`);
     });
+    
 
     lavalink.on("trackError", (player, track, payload) => {
       console.error(`[Lavalink] ❌ Track Error for ${track!.info.title}:`, payload.error);
@@ -111,6 +111,8 @@ async function bootstrap() {
     lavalink.nodeManager.on("error", (node, error) => {
       console.error(`❌ Lavalink Node "${node.id}" error:`, error.message);
     });
+
+    client.on('raw', (d) => lavalink.sendRawData(d));
 
     client.on(Events.Error, (error) => {
       console.error('Discord Client Error:', error);

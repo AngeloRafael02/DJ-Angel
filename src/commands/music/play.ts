@@ -45,7 +45,7 @@ const playCommand: Command = {
 
       if (!player.connected) {
         await player.connect();
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       const songId = getOriginalId(interaction.options.getString("songid", true).trim());
