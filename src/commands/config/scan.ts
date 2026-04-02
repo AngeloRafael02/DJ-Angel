@@ -1,6 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
-import { Command, DriveFile } from "../../interfaces.js";
-import { drive } from "../../services/google-drive.js";
+import { Command } from "../../interfaces.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
