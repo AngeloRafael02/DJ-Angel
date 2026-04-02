@@ -5,17 +5,20 @@ import { drive } from "../../services/google-drive.js";
 import { getOriginalId } from "../../utils/crypto.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { lavalink } from '../../index.js'
+import { validateVoiceState } from "../../utils/validations.js";
 
 
 const playCommand: Command = {
+  cooldown: 5,
   data: new SlashCommandBuilder()
     .setName("play")
     .setDescription("Play an MP3 from Google Drive in the current voice channel")
     .addStringOption((option) =>
       option
         .setName("songid")
-        .setDescription("The Google Drive ID of the song")
+        .setDescription("the ID of the song (Six characters long)")
         .setRequired(true)
+        .setMaxLength(6)
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -26,14 +29,10 @@ const playCommand: Command = {
       return;
     }
 
-    const guildId = interaction.guildId!;
-    const member = interaction.guild?.members.cache.get(interaction.user.id);
-    const voiceChannelId = member?.voice.channelId;
+    const voiceChannelId = await validateVoiceState(interaction);
+    if (!voiceChannelId) return;
 
-    if (!voiceChannelId) {
-      await interaction.editReply("You must be in a voice channel first!");
-      return;
-    }
+    const guildId = interaction.guildId!;
 
     try {
       const player = lavalink.createPlayer({

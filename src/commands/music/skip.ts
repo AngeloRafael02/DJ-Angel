@@ -6,6 +6,7 @@ import {
 import { Command } from "../../interfaces.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { lavalink } from "../../index.js";
+import { validateVoiceState } from "../../utils/validations.js";
 
 const skipCommand: Command = {
   data: new SlashCommandBuilder()
@@ -22,6 +23,9 @@ const skipCommand: Command = {
 
     const guildId = interaction.guildId;
     if (!guildId) return;
+
+    const voiceChannelId = await validateVoiceState(interaction);
+    if (!voiceChannelId) return;
 
     const player = lavalink.getPlayer(guildId);
 

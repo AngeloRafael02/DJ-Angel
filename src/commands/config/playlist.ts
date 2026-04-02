@@ -30,6 +30,7 @@ const extractFolderIdFromUrl = (url: string): string | null => {
 }
 
 const playlistCommand: Command = {
+  cooldown: 5,
   data: new SlashCommandBuilder()
     .setName("playlist")
     .setDescription("Set the PUBLIC Google Drive folder used as the music playlist (admin only)")

@@ -7,12 +7,10 @@ const pingCommand: Command = {
     .setName("ping")
     .setDescription("Replies with Pong and latency Information"),
   execute: async (interaction: ChatInputCommandInteraction) => {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     if (!isAuthorized(interaction)) {
-      await interaction.reply({
-        content: "You do not have permission to use this command.",
-        flags: [MessageFlags.Ephemeral]
-      });
+      interaction.editReply("You do not have permission to use this command.",);
       return;
     }
 

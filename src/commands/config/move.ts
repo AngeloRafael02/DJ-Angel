@@ -4,6 +4,7 @@ import { isAuthorized } from "../../utils/auth.js";
 import { lavalink } from "../../index.js";
 
 const moveCommand: Command = {
+  cooldown: 5,
   data: new SlashCommandBuilder()
     .setName("move")
     .setDescription("Make the bot join or move to a specific voice channel")

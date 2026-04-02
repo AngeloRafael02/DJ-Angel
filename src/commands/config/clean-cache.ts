@@ -3,6 +3,7 @@ import { Command } from "../../interfaces.js";
 import { dbCache } from "../../database/search-cache.js";
 
 const cleanCacheCommand: Command = {
+  cooldown: 10,
   data: new SlashCommandBuilder()
     .setName("clean-cache")
     .setDescription("Manually manage the Google Drive file cache")

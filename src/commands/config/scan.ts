@@ -6,6 +6,7 @@ import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
 
 const scanCommand: Command = {
+  cooldown: 5,
   data: new SlashCommandBuilder()
     .setName("scan")
     .setDescription("Scans the Google Drive Folder and saves metadata the music library"),

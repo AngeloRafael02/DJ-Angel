@@ -16,6 +16,7 @@ const searchCommand: Command = {
         .setName("query")
         .setDescription("Word or phrase to search for")
         .setRequired(true)
+        .setAutocomplete(true)
     )
     .addIntegerOption((option) =>
       option

@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "
 import { Command } from "../../interfaces.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { lavalink } from "../../index.js";
+import { validateVoiceState } from "../../utils/validations.js";
 
 const stopCommand: Command = {
   data: new SlashCommandBuilder()
@@ -18,6 +19,10 @@ const stopCommand: Command = {
 
     const guildId = interaction.guildId;
     if (!guildId) return;
+
+    const voiceChannelId = await validateVoiceState(interaction);
+    if (!voiceChannelId) return;
+
 
     const player = lavalink.getPlayer(guildId);
 
