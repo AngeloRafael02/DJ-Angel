@@ -3,8 +3,9 @@
 ## Unfinished
 - try adding buttons per song in `/list` to auto-play song / send song to queue
 - create playlist groups by putting songs on sub folders inside public folder
-- `src/database/id-registry.ts` and  `src/database/search-cache.ts` mey be mergedimplemented cleaner since ids on both tables are duplicate
+- `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
+- Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. )
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE
