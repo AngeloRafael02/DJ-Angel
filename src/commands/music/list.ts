@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 import { Command } from "../../interfaces.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
@@ -82,13 +82,30 @@ const listCommand: Command = {
 
       const startIndex = (page - 1) * pageSize;
       const pageFiles = sortedFiles.slice(startIndex, startIndex + pageSize);
+      const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+      let currentRow = new ActionRowBuilder<ButtonBuilder>();
 
       const fileList = pageFiles
         .map((file, index) => {
           const shortId = getShortId(file.id!);
+
+          const button = new ButtonBuilder()
+            .setCustomId(`play_${shortId}`)
+            .setLabel(`${startIndex + index + 1}`)
+            .setStyle(ButtonStyle.Secondary);
+
+          if (currentRow.components.length < 5) {
+            currentRow.addComponents(button);
+          } else {
+            rows.push(currentRow);
+            currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
+          }
+
           return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`;
         })
         .join("\n");
+
+      if (currentRow.components.length > 0) rows.push(currentRow);
 
       const sortLabel = {
         name_asc: "A-Z",
@@ -99,9 +116,10 @@ const listCommand: Command = {
 
       const content = `🎵 **Library** [Sorted by: ${sortLabel}] (Page ${page}/${totalPages})\n\n${fileList}`;
 
-      await interaction.editReply(
-        content.length > 2000 ? content.substring(0, 1990) + "..." : content
-      );
+      await interaction.editReply({
+        content: content.length > 2000 ? content.substring(0, 1990) + "..." : content,
+        components: rows
+      });
 
     } catch (error) {
       console.error("Google Drive API Error:", error);

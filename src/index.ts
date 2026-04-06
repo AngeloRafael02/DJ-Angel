@@ -7,6 +7,7 @@ import express from 'express';
 import { loadCommands } from "./core/load-commands.js";
 import { dbCache } from "./database/search-cache.js";
 import { streamRouter } from "./routes/stream.js";
+import { playDriveSong } from "./core/player.js";
 
 dotenv.config();
 
@@ -68,6 +69,15 @@ async function bootstrap() {
     });
 
     client.on(Events.InteractionCreate, async (interaction) => {
+
+      if (interaction.isButton()) {
+        if (interaction.customId.startsWith("play_")) {
+          const shortId = interaction.customId.replace("play_", "");
+          await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+          await playDriveSong(interaction, shortId);
+        }
+      }
+
       if (!interaction.isChatInputCommand()) return;
 
       const command = commands.find((c) => c.data.name === interaction.commandName);

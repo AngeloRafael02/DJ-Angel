@@ -37,14 +37,16 @@ const skipCommand: Command = {
     try {
       const currentTitle = player.queue.current.info.title;
 
+      // Check if there is anything actually waiting in the queue array
+      const hasNextTrack = player.queue.tracks.length > 0;
+
       const nextTrack = player.queue.tracks[0];
-      const nextMsg = nextTrack
-        ? `Next up: **${nextTrack.info.title}**`
-        : "The queue is now empty.";
-
       await player.skip();
-
-      await interaction.editReply(`⏭️ Skipped **${currentTitle}**\n${nextMsg}`);
+      if (hasNextTrack) {
+        await interaction.editReply(`⏭️ Skipped **${currentTitle}**\nNext up: **${nextTrack.info.title}**`);
+      } else {
+        await interaction.editReply(`⏭️ Skipped **${currentTitle}**\nThe queue is now empty.`);
+      }
     } catch (error) {
       console.error("[Skip Command Error]:", error);
       await interaction.editReply("An error occurred while trying to skip the song.");

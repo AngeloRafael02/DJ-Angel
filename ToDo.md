@@ -1,7 +1,10 @@
 # To Do
 
 ## Unfinished
-- try adding buttons per song in `/list` to auto-play song / send song to queue
+- Bug: /skip does not work (skip must stop the song if queue has one last song)
+- add number to /skip to skip a number of songs in queue
+- add --get and --set argumentt to get or set Gooogle Drive folder URL
+- try adding buttons per song in `/list` to auto-play song / send song to queue - BETA DESIGN
 - create playlist groups by putting songs on sub folders inside public folder
 - `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
