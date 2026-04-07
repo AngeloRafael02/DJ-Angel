@@ -30,26 +30,25 @@ const skipCommand: Command = {
     const player = lavalink.getPlayer(guildId);
 
     if (!player || !player.queue.current) {
-      await interaction.editReply("There is no music playing to skip.");
-      return;
+        await interaction.editReply("There is no music playing to skip.");
+        return;
     }
 
     try {
-      const currentTitle = player.queue.current.info.title;
+        const currentTitle = player.queue.current.info.title;
+        const queueLength = player.queue.tracks.length;
 
-      // Check if there is anything actually waiting in the queue array
-      const hasNextTrack = player.queue.tracks.length > 0;
-
-      const nextTrack = player.queue.tracks[0];
-      await player.skip();
-      if (hasNextTrack) {
-        await interaction.editReply(`⏭️ Skipped **${currentTitle}**\nNext up: **${nextTrack.info.title}**`);
-      } else {
-        await interaction.editReply(`⏭️ Skipped **${currentTitle}**\nThe queue is now empty.`);
-      }
+        if (queueLength === 0) {
+            await player.destroy();
+            await interaction.editReply(`⏹️ Stopped **${currentTitle}** as it was the last song.`);
+        } else {
+            const nextTrack = player.queue.tracks[0];
+            await player.skip();
+            await interaction.editReply(`⏭️ Skipped **${currentTitle}**\nNext up: **${nextTrack.info.title}**`);
+        }
     } catch (error) {
-      console.error("[Skip Command Error]:", error);
-      await interaction.editReply("An error occurred while trying to skip the song.");
+        console.error("[Skip Command Error]:", error);
+        await interaction.editReply("An error occurred while trying to skip the song.");
     }
   },
 };
