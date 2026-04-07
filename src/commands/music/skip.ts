@@ -33,12 +33,13 @@ const skipCommand: Command = {
     const player = lavalink.getPlayer(guildId);
 
     if (!player || !player.queue.current) {
-        await interaction.editReply("There is no music playing to skip.");
-        return;
+      await interaction.editReply("There is no music playing to skip.");
+      return;
     }
 
     const amount = interaction.options.getInteger("amount") || 1;
     const queueLength = player.queue.tracks.length;
+    const currentTitle = player.queue.current.info.title;
     if (amount > queueLength + 1) {
       await interaction.editReply(
         `❌ You can't skip **${amount}** songs. There are only **${queueLength + 1}** tracks in the total session.`
@@ -47,22 +48,22 @@ const skipCommand: Command = {
     }
 
     try {
-        const currentTitle = player.queue.current.info.title;
+      if (amount > queueLength) {
+        await player.destroy();
+        await interaction.editReply(`⏭️ Skipped **${currentTitle}**. The queue is now empty and playback has stopped.`);
+        return;
+      }
 
-        if (amount > 1) {
-          await player.skip(amount);
-          await interaction.editReply(`⏭️ Skipped **${amount}** songs (starting with **${currentTitle}**).`);
-        } else {
-          const hasNext = queueLength > 0;
-          await player.skip();
-          const response = hasNext
-            ? `⏭️ Skipped **${currentTitle}**`
-            : `⏭️ Skipped **${currentTitle}**. The queue is now empty.`;
-          await interaction.editReply(response);
-        }
+      if (amount > 1) {
+        await player.skip(amount);
+        await interaction.editReply(`⏭️ Skipped **${amount}** songs (starting with **${currentTitle}**).`);
+      } else {
+        await player.skip();
+        await interaction.editReply(`⏭️ Skipped **${currentTitle}**.`);
+      }
     } catch (error) {
-        console.error("[Skip Command Error]:", error);
-        await interaction.editReply("An error occurred while trying to skip the song.");
+      console.error("[Skip Command Error]:", error);
+      await interaction.editReply("An error occurred while trying to skip the song.");
     }
   },
 };
