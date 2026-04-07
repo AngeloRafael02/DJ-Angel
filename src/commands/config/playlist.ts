@@ -1,13 +1,8 @@
-import {
-  ChatInputCommandInteraction,
-  MessageFlags,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-} from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder,} from "discord.js";
 import { Command } from "../../interfaces.js";
 import { drive } from "../../services/google-drive.js";
 import { dbCache } from "../../database/search-cache.js";
-import { setPlaylistFolderId } from "../../services/playlist.js";
+import { setPlaylistFolderId, getPlaylistFolderId } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
 
 
@@ -34,76 +29,78 @@ const playlistCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("playlist")
     .setDescription("Set the PUBLIC Google Drive folder used as the music playlist (admin only)")
-    .addStringOption((option) =>
-      option
-        .setName("url")
-        .setDescription("Public Google Drive folder URL (e.g. https://drive.google.com/drive/folders/...)")
-        .setRequired(true)
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("set")
+        .setDescription("Set the PUBLIC Google Drive folder URL")
+        .addStringOption((option) =>
+          option
+            .setName("url")
+            .setDescription("The Google Drive folder URL")
+            .setRequired(true)
+        )
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("get")
+        .setDescription("Get the current playlist folder URL")
+    ),
   execute: async (interaction: ChatInputCommandInteraction) => {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     if (!isAuthorized(interaction)) {
-      await interaction.reply({
-        content: "You do not have permission to use this command.",
-        flags: [MessageFlags.Ephemeral]
-      });
+      await interaction.editReply("You do not have permission to use this command.");
       return;
     }
 
     if (!interaction.inGuild() || !interaction.guild) {
-      await interaction.reply({
-        content: "This command can only be used in a server.",
-        flags: [MessageFlags.Ephemeral],
-      });
+      await interaction.editReply("This command can only be used in a server.");
       return;
     }
 
-    const url = interaction.options.getString("url", true);
-    const folderId = extractFolderIdFromUrl(url);
+    const sub = interaction.options.getSubcommand();
 
-    if (!folderId) {
-      await interaction.reply({
-        content:
-          "That doesn't look like a valid PUBLIC Google Drive folder URL. Use a link like: `https://drive.google.com/drive/folders/YOUR_FOLDER_ID`",
-        flags: [MessageFlags.Ephemeral],
-      });
+    if (sub === "get") {
+      const folderId = getPlaylistFolderId(interaction.guild.id);
+      const url = `https://drive.google.com/drive/folders/${folderId}`;
+      await interaction.editReply( `The current playlist folder is:\n${url}`);
       return;
     }
 
-    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    if (sub === "set") {
+      const url = interaction.options.getString("url", true);
+      const folderId = extractFolderIdFromUrl(url);
 
-    try {
-      // 3. Update the ID and wipe the old cache
-      setPlaylistFolderId(interaction.guild.id, folderId);
+      if (!folderId) {
+        await interaction.editReply("Invalid URL. Please provide a valid Google Drive folder link.");
+        return;
+      }
 
-      // 4. Eager Sync: Fetch the new folder contents immediately
-      const newFiles: { id: string; name: string }[] = [];
-      let pageToken: string | undefined = undefined;
+      try {
+        setPlaylistFolderId(interaction.guild.id, folderId);
 
-      do {
-        const response: any = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-          fields: "nextPageToken, files(id, name)",
-          pageSize: 1000,
-          pageToken,
-        });
-        newFiles.push(...(response.data.files ?? []));
-        pageToken = response.data.nextPageToken ?? undefined;
-      } while (pageToken);
+        const newFiles: { id: string; name: string }[] = [];
+        let pageToken: string | undefined = undefined;
 
-      // 5. Save the new results to SQLite
-      dbCache.set(interaction.guild.id, newFiles);
+        do {
+          const response: any = await drive.files.list({
+            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
+            fields: "nextPageToken, files(id, name)",
+            pageSize: 1000,
+            pageToken,
+          });
+          newFiles.push(...(response.data.files ?? []));
+          pageToken = response.data.nextPageToken ?? undefined;
+        } while (pageToken);
 
-      await interaction.editReply({
-        content: `✅ **Success!** Playlist updated to new folder.\nFound **${newFiles.length}** MP3 files. The cache has been refreshed.`,
-      });
+        dbCache.set(interaction.guild.id, newFiles);
 
-    } catch (error) {
-      console.error("Sync Error during playlist change:", error);
-      await interaction.editReply({
-        content: `⚠️ Folder ID updated, but I couldn't scan the files. Make sure the folder is **Public** or shared with my service account.`,
-      });
+        await interaction.editReply(`✅ **Success!** Playlist updated.\nFound **${newFiles.length}** MP3 files.`);
+      } catch (error) {
+        console.error("Sync Error:", error);
+        await interaction.editReply(`⚠️ Folder set, but I couldn't scan it. Check folder permissions.`);
+      }
     }
   },
 };

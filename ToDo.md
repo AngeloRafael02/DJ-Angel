@@ -1,8 +1,8 @@
 # To Do
 
 ## Unfinished
-- Bug: /skip does not work (skip must stop the song if queue has one last song)
-- add number to /skip to skip a number of songs in queue
+- Bug: /skip does not work (skip must stop the song if queue has one last song) - TO TEST
+- add number to /skip to skip a number of songs in queue - TO TEST
 - add --get and --set argumentt to get or set Gooogle Drive folder URL
 - try adding buttons per song in `/list` to auto-play song / send song to queue - BETA DESIGN
 - create playlist groups by putting songs on sub folders inside public folder
