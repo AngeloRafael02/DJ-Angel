@@ -12,14 +12,19 @@
   ],
   "homepage": "https://github.com/AngeloRafael02/DJ-Angel#readme",
   "bugs": {
-    "url": "https://github.com/AngeloRafael02/DJ-Angel/issues"
+    "url": "https://github.com/AngeloRafael02/DJ-Angel/issues",
+    "email": "recioangelorafael@gmail.com"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AngeloRafael02/DJ-Angel.git"
   },
   "license": "ISC",
-  "author": "Angelo Rafael F. Recio <recioangelorafael@gmail.com>",
+  "author": {
+    "name": "Angelo Rafael F. Recio",
+    "email": "recioangelorafael@gmail.com",
+    "url": "https://www.linkedin.com/in/angelo-rafael-recio-95a02a1a5/"
+  },
   "type": "module",
   "main": "index.js",
   "engines": {
