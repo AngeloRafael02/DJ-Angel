@@ -1,10 +1,14 @@
 {
   "name": "dj-angel",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A Discord DJ Bot that uses a public google drive folder as their music library ",
   "keywords": [
-    "DiscordJS",
-    "googleapis"
+    "discord-bot",
+    "music-bot",
+    "lavalink",
+    "google-drive",
+    "discordjs",
+    "typescript"
   ],
   "homepage": "https://github.com/AngeloRafael02/DJ-Angel#readme",
   "bugs": {
@@ -15,9 +19,13 @@
     "url": "git+https://github.com/AngeloRafael02/DJ-Angel.git"
   },
   "license": "ISC",
-  "author": "Angelo Rafael F. Recio",
+  "author": "Angelo Rafael F. Recio <recioangelorafael@gmail.com>",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.21.0",
+    "npm": ">=10.9.4"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsx src/index.ts",
