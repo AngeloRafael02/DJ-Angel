@@ -3,12 +3,10 @@
 ## Unfinished
 - Bug: /skip does not work (skip must stop the song if queue has one last song) - TO TEST
 - add number to /skip to skip a number of songs in queue - TO TEST
-- add --get and --set argumentt to get or set Gooogle Drive folder URL
-- try adding buttons per song in `/list` to auto-play song / send song to queue - BETA DESIGN
 - create playlist groups by putting songs on sub folders inside public folder
 - `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
-- Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. )
+
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE
@@ -28,5 +26,10 @@
 - make /play command more performant - Lavalink (V2.0-lavalink version)
 - implement PM2 npm package for interanal logging system - DONE
 - find way to sort playlist (alphabetically on filename, alphabetically on author, alphabetically on album, chronologically last-added) - DONE
+- add --get and --set argumentt to get or set Gooogle Drive folder URL - DONE
+- try adding buttons per song in `/list` to auto-play song / send song to queue - DONE
+
+## CANCELLED
+- Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
 
 __Additional Notes on this [link](https://gemini.google.com/share/de73c37028cd)__
