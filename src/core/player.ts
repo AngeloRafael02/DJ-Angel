@@ -30,6 +30,10 @@ export async function playDriveSong(
     }
 
     const songId = getOriginalId(shortId.trim());
+    if (!songId) {
+      await interaction.editReply("Song not found in cache (it may have expired). Please refresh the library with `/scan`, then try again.");
+      return;
+    }
     const port = process.env.STREAM_PORT || 3001;
     const ip = process.env.STREAM_HOST || "127.0.0.1";
     const secret = process.env.STREAM_SECRET;
