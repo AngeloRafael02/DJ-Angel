@@ -2,7 +2,6 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "
 import { Command } from "../../interfaces.js";
 import { dbCache } from "../../database/search-cache.js";
 import { drive } from "../../services/google-drive.js";
-import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { DriveFile } from "../../interfaces.js";
 import { getShortId } from "../../utils/crypto.js";
@@ -37,7 +36,6 @@ const searchCommand: Command = {
     const query = interaction.options.getString("query", true).toLowerCase().trim();
     const page = interaction.options.getInteger("page") ?? 1;
     const guildId = interaction.guildId ?? "DM_CHANNEL";
-    const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
       let allFiles = dbCache.get<DriveFile[]>(guildId);
@@ -48,7 +46,7 @@ const searchCommand: Command = {
         do {
           const response: any = await drive.files.list({
             q: `mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name)",
+            fields: "nextPageToken, files(id, name, createdTime, mimeType)",
             pageSize: 1000,
             pageToken,
           });
@@ -59,9 +57,7 @@ const searchCommand: Command = {
         dbCache.set(guildId, allFiles);
       }
 
-      const matches = allFiles.filter(file =>
-        file.name.toLowerCase().includes(query)
-      );
+      const matches = dbCache.search(query);
 
       if (matches.length === 0) {
         await interaction.editReply(`No matches found for "**${query}**".`);

@@ -80,13 +80,13 @@ const playlistCommand: Command = {
       try {
         setPlaylistFolderId(interaction.guild.id, folderId);
 
-        const newFiles: { id: string; name: string }[] = [];
+        const newFiles: any[] = [];
         let pageToken: string | undefined = undefined;
 
         do {
           const response: any = await drive.files.list({
             q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name)",
+            fields: "nextPageToken, files(id, name, createdTime, mimeType)",
             pageSize: 1000,
             pageToken,
           });
