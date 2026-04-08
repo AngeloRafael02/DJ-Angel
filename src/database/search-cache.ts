@@ -1,24 +1,11 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import crypto from 'crypto';
+import { DriveFile } from '../interfaces.js';
 
 const db = new Database(path.join(process.cwd(), 'cache.db'));
 
 const METADATA_KEY = 'drive_cache';
-
-type DriveFileLike = {
-  id?: string;
-  name?: string;
-  mimeType?: string;
-  createdTime?: string;
-};
-
-type DriveCacheRow = {
-  drive_id: string;
-  name: string;
-  mimeType: string;
-  createdTime: string;
-};
 
 export const baseShortId = (driveId: string): string =>
   crypto
@@ -33,12 +20,12 @@ export const computeShortIdWithCollision = (driveId: string): string => {
   let salt = 0;
 
   const checkCollision = db.prepare(
-    'SELECT drive_id FROM drive_cache WHERE short_id = ?'
+    'SELECT id FROM drive_cache WHERE short_id = ?'
   );
 
   while (true) {
-    const collision = checkCollision.get(shortId) as { drive_id: string } | undefined;
-    if (!collision || collision.drive_id === driveId) break;
+    const collision = checkCollision.get(shortId) as { id: string } | undefined;
+    if (!collision || collision.id === driveId) break;
 
     shortId = crypto
       .createHash('md5')
@@ -68,7 +55,7 @@ const createNewDriveCacheTable = (): void => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS drive_cache (
       short_id TEXT PRIMARY KEY,
-      drive_id TEXT NOT NULL UNIQUE,
+      id TEXT NOT NULL UNIQUE,
       createdTime TEXT NOT NULL,
       mimeType TEXT NOT NULL,
       name TEXT NOT NULL
@@ -104,14 +91,14 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   // Migrate the old table format:
   // - drive_cache.guild_id, drive_cache.file_data(JSON array), drive_cache.expiry
   // into:
-  // - drive_cache(short_id, drive_id, createdTime, mimeType, name)
+  // - drive_cache(short_id, id, createdTime, mimeType, name)
   const oldRows = db.prepare('SELECT file_data, expiry FROM drive_cache').all() as Array<{
     file_data: string;
     expiry: number;
   }>;
 
   let expiryMax = 0;
-  const filesToInsert: DriveFileLike[] = [];
+  const filesToInsert: DriveFile[] = [];
 
   for (const row of oldRows) {
     const expiry = Number(row.expiry ?? 0);
@@ -120,7 +107,7 @@ const migrateOldDriveCacheIfNeeded = (): void => {
     if (!row.file_data) continue;
 
     try {
-      const parsed = JSON.parse(row.file_data) as DriveFileLike[];
+      const parsed = JSON.parse(row.file_data) as DriveFile[];
       if (Array.isArray(parsed)) filesToInsert.push(...parsed);
     } catch {
       // Ignore malformed cached JSON.
@@ -131,7 +118,7 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   createNewDriveCacheTable();
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_cache (short_id, drive_id, createdTime, mimeType, name)
+    INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name)
     VALUES (?, ?, ?, ?, ?)
   `);
 
@@ -195,10 +182,10 @@ export const dbCache = {
 
     const expiry = Date.now() + ttl;
 
-    const normalizedFiles: DriveFileLike[] = files as DriveFileLike[];
+    const normalizedFiles: DriveFile[] = files as DriveFile[];
 
     const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_cache (short_id, drive_id, createdTime, mimeType, name)
+      INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name)
       VALUES (?, ?, ?, ?, ?)
     `);
 
@@ -231,13 +218,13 @@ export const dbCache = {
     ensureFresh();
 
     const rows = db
-      .prepare('SELECT drive_id, name, mimeType, createdTime FROM drive_cache')
-      .all() as DriveCacheRow[];
+      .prepare('SELECT id, name, mimeType, createdTime FROM drive_cache')
+      .all() as DriveFile[];
 
     if (!rows.length) return null;
 
     const files = rows.map(row => ({
-      id: row.drive_id,
+      id: row.id,
       name: row.name,
       mimeType: row.mimeType,
       createdTime: row.createdTime,
@@ -252,7 +239,7 @@ export const dbCache = {
    */
   search(
     query: string
-  ): Array<{ id: string; name: string; mimeType: string; createdTime: string }> {
+  ): Array<DriveFile> {
     ensureFresh();
 
     const q = query?.trim() ?? '';
@@ -261,14 +248,14 @@ export const dbCache = {
     const pattern = `%${q}%`;
     const rows = db
       .prepare(`
-        SELECT drive_id, name, mimeType, createdTime
+        SELECT id, name, mimeType, createdTime
         FROM drive_cache
         WHERE name LIKE ? COLLATE NOCASE
       `)
-      .all(pattern) as DriveCacheRow[];
+      .all(pattern) as DriveFile[];
 
     return rows.map(row => ({
-      id: row.drive_id,
+      id: row.id,
       name: row.name,
       mimeType: row.mimeType,
       createdTime: row.createdTime,

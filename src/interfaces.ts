@@ -5,6 +5,7 @@ export type Store = Record<string, string>;
 export type DriveFile = {
   id: string;
   name: string;
+  mimeType?: string;
   createdTime?: string;
 };
 

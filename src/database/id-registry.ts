@@ -33,7 +33,7 @@ export const idRegistry = {
   getOrCreateShortId(driveId: string): string {
     ensureFresh();
     const existing = db
-      .prepare('SELECT short_id FROM drive_cache WHERE drive_id = ?')
+      .prepare('SELECT short_id FROM drive_cache WHERE id = ?')
       .get(driveId) as { short_id: string } | undefined;
 
     if (existing) return existing.short_id;
@@ -48,9 +48,9 @@ export const idRegistry = {
     if (!shortId) return undefined;
     ensureFresh();
     const row = db
-      .prepare('SELECT drive_id FROM drive_cache WHERE short_id = ? LIMIT 1')
-      .get(shortId.toUpperCase()) as { drive_id: string } | undefined;
+      .prepare('SELECT id FROM drive_cache WHERE short_id = ? LIMIT 1')
+      .get(shortId.toUpperCase()) as { id: string } | undefined;
 
-    return row?.drive_id;
+    return row?.id;
   }
 };
