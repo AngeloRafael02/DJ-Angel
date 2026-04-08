@@ -1,8 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import crypto from 'crypto';
 
-import { ensureDriveCacheSchema } from './search-cache.js';
+import { ensureDriveCacheSchema, computeShortIdWithCollision } from './search-cache.js';
 
 const METADATA_KEY = 'drive_cache';
 
@@ -28,37 +27,6 @@ const ensureFresh = (): void => {
     db.prepare('DELETE FROM drive_cache').run();
     db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
   }
-};
-
-const baseShortId = (driveId: string): string =>
-  crypto
-    .createHash('md5')
-    .update(driveId)
-    .digest('hex')
-    .substring(0, 6)
-    .toUpperCase();
-
-const computeShortIdWithCollision = (driveId: string): string => {
-  let shortId = baseShortId(driveId);
-  let salt = 0;
-
-  const checkCollision = db.prepare(
-    'SELECT drive_id FROM drive_cache WHERE short_id = ?'
-  );
-
-  while (true) {
-    const collision = checkCollision.get(shortId) as { drive_id: string } | undefined;
-    if (!collision || collision.drive_id === driveId) break;
-
-    shortId = crypto
-      .createHash('md5')
-      .update(driveId + (salt++))
-      .digest('hex')
-      .substring(0, 6)
-      .toUpperCase();
-  }
-
-  return shortId;
 };
 
 export const idRegistry = {

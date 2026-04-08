@@ -20,7 +20,7 @@ type DriveCacheRow = {
   createdTime: string;
 };
 
-const baseShortId = (driveId: string): string =>
+export const baseShortId = (driveId: string): string =>
   crypto
     .createHash('md5')
     .update(driveId)
@@ -28,7 +28,7 @@ const baseShortId = (driveId: string): string =>
     .substring(0, 6)
     .toUpperCase();
 
-const computeShortIdWithCollision = (driveId: string): string => {
+export const computeShortIdWithCollision = (driveId: string): string => {
   let shortId = baseShortId(driveId);
   let salt = 0;
 
