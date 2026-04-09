@@ -2,7 +2,6 @@
 
 ## Unfinished
 - create playlist groups by putting songs on sub folders inside public folder
-- `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
 
 
@@ -11,7 +10,7 @@
 - Create basic Discord Bot functinality - DONE
 - Make /list result ephemeral for users looking for songs - DONE
 - limit /list result to 10, implelment pagination by adding a optinal page argument - DONE
-- - configure /list to show all even if there are folder with songs inside (use recursive) - DONE
+- configure /list to show all even if there are folder with songs inside (use recursive) - DONE
 - '/play <song-id>' commands to make bot play a song (one Song for now) - DONE
 - add /stop command to stop music - DONE
 - shorten songiD (very long to 6 alphanumerical characters) for ease of command usage - DONE
@@ -28,6 +27,8 @@
 - try adding buttons per song in `/list` to auto-play song / send song to queue - DONE
 - Bug: /skip does not work (skip must stop the song if queue has one last song) - DONE
 - add number to /skip to skip a number of songs in queue - DONE
+- `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate - DONE
+
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
