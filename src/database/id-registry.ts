@@ -1,18 +1,12 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-
 import { ensureDriveCacheSchema, computeShortIdWithCollision } from './search-cache.js';
-
-const METADATA_KEY = 'drive_cache';
-
-const db = new Database(path.join(process.cwd(), 'cache.db'));
+import { db, METADATA_KEYS } from '../core/db-instance.js';
 
 ensureDriveCacheSchema();
 
 const getMetadataExpiry = (): number => {
   const row = db
     .prepare('SELECT expiry FROM metadata WHERE key = ?')
-    .get(METADATA_KEY) as { expiry: number } | undefined;
+    .get(METADATA_KEYS.DRIVE_CACHE) as { expiry: number } | undefined;
 
   return row?.expiry ?? 0;
 };
@@ -25,11 +19,16 @@ const ensureFresh = (): void => {
 
   if (Date.now() > expiry) {
     db.prepare('DELETE FROM drive_cache').run();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
+    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
   }
 };
 
 export const idRegistry = {
+  /**
+   * creates a Six Characters long ID version of the Drive ID
+   * @param driveId 
+   * @returns string
+   */
   getOrCreateShortId(driveId: string): string {
     ensureFresh();
     const existing = db
@@ -43,6 +42,8 @@ export const idRegistry = {
 
   /**
    * Reverts a ShortID back to the original Drive ID.
+   * @param shortId 
+   * @returns string | undefined 
    */
   getOriginalId(shortId: string): string | undefined {
     if (!shortId) return undefined;

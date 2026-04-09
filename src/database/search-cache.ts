@@ -1,11 +1,7 @@
-import Database from 'better-sqlite3';
-import path from 'path';
 import crypto from 'crypto';
+
 import { DriveFile } from '../interfaces.js';
-
-const db = new Database(path.join(process.cwd(), 'cache.db'));
-
-const METADATA_KEY = 'drive_cache';
+import { db,METADATA_KEYS } from '../core/db-instance.js';
 
 export const baseShortId = (driveId: string): string =>
   crypto
@@ -48,7 +44,7 @@ const ensureMetadataTable = (): void => {
 
   db.prepare(
     'INSERT OR IGNORE INTO metadata (key, expiry) VALUES (?, ?)'
-  ).run(METADATA_KEY, 0);
+  ).run(METADATA_KEYS.DRIVE_CACHE, 0);
 };
 
 const createNewDriveCacheTable = (): void => {
@@ -139,7 +135,7 @@ const migrateOldDriveCacheIfNeeded = (): void => {
 
   tx();
 
-  db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiryMax, METADATA_KEY);
+  db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiryMax, METADATA_KEYS.DRIVE_CACHE);
 };
 
 export const ensureDriveCacheSchema = (): void => {
@@ -150,7 +146,7 @@ export const ensureDriveCacheSchema = (): void => {
 const getMetadataExpiry = (): number => {
   const row = db
     .prepare('SELECT expiry FROM metadata WHERE key = ?')
-    .get(METADATA_KEY) as { expiry: number } | undefined;
+    .get(METADATA_KEYS.DRIVE_CACHE) as { expiry: number } | undefined;
 
   return row?.expiry ?? 0;
 };
@@ -168,7 +164,7 @@ const ensureFresh = (): void => {
 
   if (Date.now() > expiry) {
     clearDriveCache();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
+    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
   }
 };
 
@@ -204,7 +200,7 @@ export const dbCache = {
         insertStmt.run(shortId, driveId, createdTime, mimeType, name);
       }
 
-      db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiry, METADATA_KEY);
+      db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiry, METADATA_KEYS.DRIVE_CACHE);
     });
 
     tx();
@@ -266,7 +262,7 @@ export const dbCache = {
     void guildId; // cache is global
     ensureDriveCacheSchema();
     clearDriveCache();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
+    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
   },
 
   /**
@@ -279,7 +275,7 @@ export const dbCache = {
     if (!expiry || Date.now() <= expiry) return { deleted: 0 };
 
     const deleted = clearDriveCache();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
+    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
     db.exec('VACUUM');
     return { deleted };
   },
@@ -290,7 +286,7 @@ export const dbCache = {
   wipeAll(): number {
     ensureDriveCacheSchema();
     const deleted = clearDriveCache();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEY);
+    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
     db.exec('VACUUM');
     return deleted;
   },

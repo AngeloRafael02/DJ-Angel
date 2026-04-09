@@ -3,9 +3,9 @@
  */
 
 import { google } from 'googleapis';
-import path from 'path';
+import { join } from "path";
 
-const KEYFILEPATH = path.join(process.cwd(), 'dj-angel-bot.json');
+const KEYFILEPATH = join(process.cwd(), 'dj-angel-bot.json');
 
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
