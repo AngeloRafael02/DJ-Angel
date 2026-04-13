@@ -8,6 +8,8 @@ import { loadCommands } from "./core/load-commands.js";
 import { dbCache } from "./database/search-cache.js";
 import { streamRouter } from "./routes/stream.js";
 import { playDriveSong } from "./core/player.js";
+import { db } from "./core/db-instance.js";
+import { ensureGuildSettingsTable } from "./database/tables.js";
 
 dotenv.config();
 
@@ -66,6 +68,8 @@ async function bootstrap() {
       } catch (error) {
         console.error("Failed to register slash commands:", error);
       }
+
+      ensureGuildSettingsTable();
     });
 
     client.on(Events.InteractionCreate, async (interaction) => {
@@ -103,6 +107,25 @@ async function bootstrap() {
 
     lavalink.nodeManager.on("connect", (node) => {
       console.log(`✅ Lavalink Node "${node.id}" connected!`);
+
+      const stmt = db.prepare("SELECT * FROM guild_settings");
+      const allSettings = stmt.all() as { guild_id: string, voice_channel_id: string, text_channel_id: string }[];
+
+      for (const settings of allSettings) {
+        if (!settings.voice_channel_id) continue;
+
+        const guild = client.guilds.cache.get(settings.guild_id);
+        if (!guild) continue;
+
+        lavalink.createPlayer({
+          guildId: settings.guild_id,
+          voiceChannelId: settings.voice_channel_id,
+          textChannelId: settings.text_channel_id,
+          selfDeaf: true,
+        }).connect();
+
+        console.log(`📡 Auto-joined ${settings.guild_id}`);
+      }
     });
 
     lavalink.on("trackStart", (player, track) => {

@@ -28,7 +28,7 @@
 - Bug: /skip does not work (skip must stop the song if queue has one last song) - DONE
 - add number to /skip to skip a number of songs in queue - DONE
 - `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate - DONE
-
+- Bot autojoins on last /move voice Channel when it restarts - DONE
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this

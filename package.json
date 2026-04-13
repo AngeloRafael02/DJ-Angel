@@ -29,7 +29,7 @@
   "main": "index.js",
   "engines": {
     "node": ">=22.21.0",
-    "npm": ">=10.9.4"
+    "npm": ">=11.12.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

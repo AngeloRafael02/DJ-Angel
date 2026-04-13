@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 
 import { DriveFile } from '../interfaces.js';
-import { db,METADATA_KEYS } from '../core/db-instance.js';
+import { db, METADATA_KEYS } from '../core/db-instance.js';
+import { createNewDriveCacheTable, ensureMetadataTable } from './tables.js';
 
 export const baseShortId = (driveId: string): string =>
   crypto
@@ -32,31 +33,6 @@ export const computeShortIdWithCollision = (driveId: string): string => {
   }
 
   return shortId;
-};
-
-const ensureMetadataTable = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS metadata (
-      key TEXT PRIMARY KEY,
-      expiry INTEGER NOT NULL
-    )
-  `);
-
-  db.prepare(
-    'INSERT OR IGNORE INTO metadata (key, expiry) VALUES (?, ?)'
-  ).run(METADATA_KEYS.DRIVE_CACHE, 0);
-};
-
-const createNewDriveCacheTable = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS drive_cache (
-      short_id TEXT PRIMARY KEY,
-      id TEXT NOT NULL UNIQUE,
-      createdTime TEXT NOT NULL,
-      mimeType TEXT NOT NULL,
-      name TEXT NOT NULL
-    )
-  `);
 };
 
 const getDriveCacheColumns = (): Array<{ name: string }> => {
