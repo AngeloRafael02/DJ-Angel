@@ -2,6 +2,11 @@
 
 ## Unfinished
 - create playlist groups by putting songs on sub folders inside public folder
+    - Have a specific command to list all folders (playlist) inside Root Folder (all songs group on the folder no matter how deep it is from the root folder, is counted as a playlist)
+    - reafactor Sqlite DB Structure to also store Folders/playlist
+        - create new Table 'drive_folders' table with 'id' PRIMARY KEY and 'name' TEXT
+        - add 'folder_id' column to drive_cache, reference key new drive_folders Table column 'id'
+        - create /play-folder command to put all songs of a folder to a queue and play them 
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system
 
 
