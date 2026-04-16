@@ -8,28 +8,49 @@ import { dbCache } from "../../database/search-cache.js";
 import { DriveFile } from "../../interfaces.js";
 import { fetchAllMp3sRecursive } from "../../core/cache.js";
 
-const listCommand: Command = {
-  data: new SlashCommandBuilder()
-    .setName("list")
-    .setDescription("Lists all MP3 files available in the Google Drive library")
-    .addIntegerOption((option) =>
+type SortOption = "name_asc" | "name_desc" | "date_desc" | "date_asc";
+
+const sortChoices = [
+  { name: "Alphabetical (A-Z)", value: "name_asc" },
+  { name: "Reverse Alphabetical (Z-A)", value: "name_desc" },
+  { name: "Newest Added First", value: "date_desc" },
+  { name: "Oldest Added First", value: "date_asc" }
+] as const;
+
+const withPageAndSort = (subcommand: any) =>
+  subcommand
+    .addIntegerOption((option: any) =>
       option
         .setName("page")
         .setDescription("Page number (10 results per page)")
         .setMinValue(1)
         .setRequired(false)
     )
-    .addStringOption((option) =>
+    .addStringOption((option: any) =>
       option
         .setName("sort")
         .setDescription("Choose the library order")
         .setRequired(false)
-        .addChoices(
-          { name: "Alphabetical (A-Z)", value: "name_asc" },
-          { name: "Reverse Alphabetical (Z-A)", value: "name_desc" },
-          { name: "Newest Added First", value: "date_desc" },
-          { name: "Oldest Added First", value: "date_asc" }
-        )
+        .addChoices(...sortChoices)
+    );
+
+const listCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName("list")
+    .setDescription("List songs or folders from the playlist library")
+    .addSubcommand((subcommand) =>
+      withPageAndSort(
+        subcommand
+          .setName("songs")
+          .setDescription("List all MP3 songs in the library")
+      )
+    )
+    .addSubcommand((subcommand) =>
+      withPageAndSort(
+        subcommand
+          .setName("folder")
+          .setDescription("List all cached playlist folders")
+      )
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -40,8 +61,9 @@ const listCommand: Command = {
       return;
     }
 
+    const subcommand = interaction.options.getSubcommand();
     const page = interaction.options.getInteger("page") ?? 1;
-    const sort = interaction.options.getString("sort") ?? "name_asc";
+    const sort = (interaction.options.getString("sort") ?? "name_asc") as SortOption;
     const guildId = interaction.guildId ?? "DM_CHANNEL"; // Fallback for DMs
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
@@ -82,6 +104,74 @@ const listCommand: Command = {
 
       const startIndex = (page - 1) * pageSize;
       const pageFiles = sortedFiles.slice(startIndex, startIndex + pageSize);
+
+      if (subcommand === "folder") {
+        const folderMap = new Map<string, { id: string; name: string; latestCreatedAt: number; oldestCreatedAt: number }>();
+
+        for (const file of allFiles) {
+          const id = file.folderId;
+          if (!id) continue;
+
+          const name = file.folderName ?? id;
+          const timestamp = file.createdTime ? new Date(file.createdTime).getTime() : 0;
+          const existing = folderMap.get(id);
+
+          if (!existing) {
+            folderMap.set(id, { id, name, latestCreatedAt: timestamp, oldestCreatedAt: timestamp || Number.MAX_SAFE_INTEGER });
+          } else {
+            existing.latestCreatedAt = Math.max(existing.latestCreatedAt, timestamp);
+            if (timestamp > 0) existing.oldestCreatedAt = Math.min(existing.oldestCreatedAt, timestamp);
+          }
+        }
+
+        const folders = [...folderMap.values()];
+        const sortedFolders = folders.sort((a, b) => {
+          switch (sort) {
+            case "name_desc":
+              return b.name.localeCompare(a.name);
+            case "date_desc":
+              return b.latestCreatedAt - a.latestCreatedAt;
+            case "date_asc":
+              return a.oldestCreatedAt - b.oldestCreatedAt;
+            case "name_asc":
+            default:
+              return a.name.localeCompare(b.name);
+          }
+        });
+
+        if (sortedFolders.length === 0) {
+          await interaction.editReply("No folders found in the current cached playlist.");
+          return;
+        }
+
+        const folderTotalPages = Math.max(1, Math.ceil(sortedFolders.length / pageSize));
+
+        if (page > folderTotalPages) {
+          await interaction.editReply(`Page ${page} doesn't exist. Max pages: **${folderTotalPages}**.`);
+          return;
+        }
+
+        const folderStartIndex = (page - 1) * pageSize;
+        const pageFolders = sortedFolders.slice(folderStartIndex, folderStartIndex + pageSize);
+        const folderList = pageFolders
+          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${folder.id}\`)`)
+          .join("\n");
+
+        const sortLabel = {
+          name_asc: "A-Z",
+          name_desc: "Z-A",
+          date_desc: "Newest Song in Folder",
+          date_asc: "Oldest Song in Folder"
+        }[sort];
+
+        const content = `📁 **Playlist Folders** [Sorted by: ${sortLabel}] (Page ${page}/${folderTotalPages})\n\n${folderList}`;
+
+        await interaction.editReply(
+          content.length > 2000 ? content.substring(0, 1990) + "..." : content
+        );
+        return;
+      }
+
       const rows: ActionRowBuilder<ButtonBuilder>[] = [];
       let currentRow = new ActionRowBuilder<ButtonBuilder>();
 

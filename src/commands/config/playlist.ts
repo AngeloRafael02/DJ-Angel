@@ -1,9 +1,9 @@
 import { ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder,} from "discord.js";
 import { Command } from "../../interfaces.js";
-import { drive } from "../../services/google-drive.js";
 import { dbCache } from "../../database/search-cache.js";
 import { setPlaylistFolderId, getPlaylistFolderId } from "../../services/playlist.js";
 import { isAuthorized } from "../../utils/auth.js";
+import { fetchAllMp3sRecursive } from "../../core/cache.js";
 
 
 /**
@@ -79,20 +79,7 @@ const playlistCommand: Command = {
 
       try {
         setPlaylistFolderId(interaction.guild.id, folderId);
-
-        const newFiles: any[] = [];
-        let pageToken: string | undefined = undefined;
-
-        do {
-          const response: any = await drive.files.list({
-            q: `'${folderId}' in parents and mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name, createdTime, mimeType)",
-            pageSize: 1000,
-            pageToken,
-          });
-          newFiles.push(...(response.data.files ?? []));
-          pageToken = response.data.nextPageToken ?? undefined;
-        } while (pageToken);
+        const newFiles = await fetchAllMp3sRecursive(folderId);
 
         dbCache.set(interaction.guild.id, newFiles);
 

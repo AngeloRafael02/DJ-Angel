@@ -15,12 +15,21 @@ export const ensureMetadataTable = (): void => {
 
 export const createNewDriveCacheTable = (): void => {
     db.exec(`
+    CREATE TABLE IF NOT EXISTS drive_folders (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    )
+  `);
+
+    db.exec(`
     CREATE TABLE IF NOT EXISTS drive_cache (
       short_id TEXT PRIMARY KEY,
       id TEXT NOT NULL UNIQUE,
       createdTime TEXT NOT NULL,
       mimeType TEXT NOT NULL,
-      name TEXT NOT NULL
+      name TEXT NOT NULL,
+      folder_id TEXT NOT NULL,
+      FOREIGN KEY(folder_id) REFERENCES drive_folders(id)
     )
   `);
 };

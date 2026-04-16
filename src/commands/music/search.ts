@@ -1,10 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { Command } from "../../interfaces.js";
 import { dbCache } from "../../database/search-cache.js";
-import { drive } from "../../services/google-drive.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { DriveFile } from "../../interfaces.js";
 import { getShortId } from "../../utils/crypto.js";
+import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
+import { fetchAllMp3sRecursive } from "../../core/cache.js";
 
 const searchCommand: Command = {
   data: new SlashCommandBuilder()
@@ -36,24 +37,13 @@ const searchCommand: Command = {
     const query = interaction.options.getString("query", true).toLowerCase().trim();
     const page = interaction.options.getInteger("page") ?? 1;
     const guildId = interaction.guildId ?? "DM_CHANNEL";
+    const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
       let allFiles = dbCache.get<DriveFile[]>(guildId);
 
       if (!allFiles) {
-        allFiles = [];
-        let pageToken: string | undefined = undefined;
-        do {
-          const response: any = await drive.files.list({
-            q: `mimeType = 'audio/mpeg' and trashed = false`,
-            fields: "nextPageToken, files(id, name, createdTime, mimeType)",
-            pageSize: 1000,
-            pageToken,
-          });
-          allFiles.push(...(response.data.files ?? []));
-          pageToken = response.data.nextPageToken ?? undefined;
-        } while (pageToken);
-
+        allFiles = await fetchAllMp3sRecursive(folderId);
         dbCache.set(guildId, allFiles);
       }
 

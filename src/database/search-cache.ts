@@ -42,6 +42,13 @@ const getDriveCacheColumns = (): Array<{ name: string }> => {
 };
 
 const migrateOldDriveCacheIfNeeded = (): void => {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS drive_folders (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL
+    )
+  `);
+
   const hasDriveCacheTable = !!db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='drive_cache'")
     .get();
@@ -51,8 +58,9 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   const columns = getDriveCacheColumns();
   const hasShortId = columns.some(c => c.name === 'short_id');
   const hasFileData = columns.some(c => c.name === 'file_data');
+  const hasFolderId = columns.some(c => c.name === 'folder_id');
 
-  if (hasShortId && !hasFileData) return; // already on the new schema
+  if (hasShortId && !hasFileData && hasFolderId) return;
 
   // Only attempt a JSON migration if we have the old `file_data` column.
   if (!hasFileData) {
@@ -90,8 +98,12 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   createNewDriveCacheTable();
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO drive_folders (id, name)
+    VALUES (?, ?)
+  `);
+  const insertCacheStmt = db.prepare(`
+    INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   const tx = db.transaction(() => {
@@ -100,12 +112,15 @@ const migrateOldDriveCacheIfNeeded = (): void => {
       const name = file.name;
       const createdTime = file.createdTime;
       const mimeType = file.mimeType;
+      const folderId = file.folderId ?? 'LEGACY_ROOT';
+      const folderName = file.folderName ?? 'Legacy Root';
 
       // New schema requires all NOT NULL columns.
-      if (!driveId || !name || !createdTime || !mimeType) continue;
+      if (!driveId || !name || !createdTime || !mimeType || !folderId) continue;
 
       const shortId = computeShortIdWithCollision(driveId);
-      insertStmt.run(shortId, driveId, createdTime, mimeType, name);
+      insertStmt.run(folderId, folderName);
+      insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
     }
   });
 
@@ -129,6 +144,11 @@ const getMetadataExpiry = (): number => {
 
 const clearDriveCache = (): number => {
   const info = db.prepare('DELETE FROM drive_cache').run();
+  return info.changes;
+};
+
+const clearDriveFolders = (): number => {
+  const info = db.prepare('DELETE FROM drive_folders').run();
   return info.changes;
 };
 
@@ -157,23 +177,31 @@ export const dbCache = {
     const normalizedFiles: DriveFile[] = files as DriveFile[];
 
     const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO drive_folders (id, name)
+      VALUES (?, ?)
+    `);
+    const insertCacheStmt = db.prepare(`
+      INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const tx = db.transaction(() => {
       clearDriveCache();
+      clearDriveFolders();
 
       for (const file of normalizedFiles) {
         const driveId = file.id;
         const name = file.name;
         const createdTime = file.createdTime;
         const mimeType = file.mimeType;
+        const folderId = file.folderId;
+        const folderName = file.folderName ?? file.folderId;
 
-        if (!driveId || !name || !createdTime || !mimeType) continue;
+        if (!driveId || !name || !createdTime || !mimeType || !folderId || !folderName) continue;
 
         const shortId = computeShortIdWithCollision(driveId);
-        insertStmt.run(shortId, driveId, createdTime, mimeType, name);
+        insertStmt.run(folderId, folderName);
+        insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
       }
 
       db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiry, METADATA_KEYS.DRIVE_CACHE);
@@ -190,7 +218,17 @@ export const dbCache = {
     ensureFresh();
 
     const rows = db
-      .prepare('SELECT id, name, mimeType, createdTime FROM drive_cache')
+      .prepare(`
+        SELECT
+          dc.id,
+          dc.name,
+          dc.mimeType,
+          dc.createdTime,
+          dc.folder_id AS folderId,
+          df.name AS folderName
+        FROM drive_cache dc
+        LEFT JOIN drive_folders df ON df.id = dc.folder_id
+      `)
       .all() as DriveFile[];
 
     if (!rows.length) return null;
@@ -220,9 +258,16 @@ export const dbCache = {
     const pattern = `%${q}%`;
     const rows = db
       .prepare(`
-        SELECT id, name, mimeType, createdTime
-        FROM drive_cache
-        WHERE name LIKE ? COLLATE NOCASE
+        SELECT
+          dc.id,
+          dc.name,
+          dc.mimeType,
+          dc.createdTime,
+          dc.folder_id AS folderId,
+          df.name AS folderName
+        FROM drive_cache dc
+        LEFT JOIN drive_folders df ON df.id = dc.folder_id
+        WHERE dc.name LIKE ? COLLATE NOCASE
       `)
       .all(pattern) as DriveFile[];
 
@@ -238,6 +283,7 @@ export const dbCache = {
     void guildId; // cache is global
     ensureDriveCacheSchema();
     clearDriveCache();
+    clearDriveFolders();
     db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
   },
 
@@ -251,6 +297,7 @@ export const dbCache = {
     if (!expiry || Date.now() <= expiry) return { deleted: 0 };
 
     const deleted = clearDriveCache();
+    clearDriveFolders();
     db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
     db.exec('VACUUM');
     return { deleted };
@@ -262,6 +309,7 @@ export const dbCache = {
   wipeAll(): number {
     ensureDriveCacheSchema();
     const deleted = clearDriveCache();
+    clearDriveFolders();
     db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
     db.exec('VACUUM');
     return deleted;

@@ -42,8 +42,8 @@ export const idRegistry = {
 
   /**
    * Reverts a ShortID back to the original Drive ID.
-   * @param shortId 
-   * @returns string | undefined 
+   * @param shortId
+   * @returns string | undefined
    */
   getOriginalId(shortId: string): string | undefined {
     if (!shortId) return undefined;

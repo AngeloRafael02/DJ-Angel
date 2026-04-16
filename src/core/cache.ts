@@ -6,6 +6,22 @@ import { DriveFile } from "../interfaces.js";
  */
 export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile[]> => {
   const allFiles: DriveFile[] = [];
+  const folderNames = new Map<string, string>();
+
+  const fetchFolderName = async (targetFolderId: string): Promise<string> => {
+    if (folderNames.has(targetFolderId)) return folderNames.get(targetFolderId)!;
+
+    const response: any = await drive.files.get({
+      fileId: targetFolderId,
+      fields: "id, name",
+    });
+
+    const folderName = response.data?.name ?? targetFolderId;
+    folderNames.set(targetFolderId, folderName);
+    return folderName;
+  };
+
+  await fetchFolderName(folderId);
 
   const crawl = async (currentFolderId: string): Promise<void> => {
     let pageToken: string | undefined = undefined;
@@ -22,9 +38,17 @@ export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile
 
       for (const item of items) {
         if (item.mimeType === 'application/vnd.google-apps.folder') {
+          folderNames.set(item.id, item.name ?? item.id);
           await crawl(item.id);
         } else {
-          allFiles.push(item);
+          allFiles.push({
+            id: item.id,
+            name: item.name,
+            createdTime: item.createdTime,
+            mimeType: item.mimeType,
+            folderId: currentFolderId,
+            folderName: folderNames.get(currentFolderId) ?? currentFolderId,
+          });
         }
       }
 

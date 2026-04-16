@@ -7,6 +7,8 @@ export type DriveFile = {
   name: string;
   mimeType?: string;
   createdTime?: string;
+  folderId?: string;
+  folderName?: string;
 };
 
 export interface Command {
