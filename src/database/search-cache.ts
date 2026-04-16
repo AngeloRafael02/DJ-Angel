@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import { DriveFile } from '../interfaces.js';
 import { db, METADATA_KEYS } from '../core/db-instance.js';
-import { createNewDriveCacheTable, ensureMetadataTable } from './tables.js';
+import { createNewDriveCacheTable, ensureGuildSettingsTable, ensureMetadataTable } from './tables.js';
 
 export const baseShortId = (driveId: string): string =>
   crypto
@@ -131,6 +131,7 @@ const migrateOldDriveCacheIfNeeded = (): void => {
 
 export const ensureDriveCacheSchema = (): void => {
   ensureMetadataTable();
+  ensureGuildSettingsTable();
   migrateOldDriveCacheIfNeeded();
 };
 
