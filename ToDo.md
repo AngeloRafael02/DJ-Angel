@@ -34,6 +34,7 @@
 - add number to /skip to skip a number of songs in queue - DONE
 - `src/database/id-registry.ts` and  `src/database/search-cache.ts` may be merged/implemented cleaner since ids on both tables are duplicate - DONE
 - Bot autojoins on last /move voice Channel when it restarts - DONE
+- Fized Auto Join timing: Only Join when all commands in /commands are registered - DONE
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this

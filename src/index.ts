@@ -48,14 +48,10 @@ export const lavalink = new LavalinkManager({
 async function bootstrap() {
   try {
     const commands = await loadCommands();
+    let canAutoJoinSavedChannels = false;
 
     client.once(Events.ClientReady, async (readyClient) => {
       console.log(`✅ DJ Bot is online! Logged in as ${readyClient.user.tag}`);
-
-      await lavalink.init({
-        id: readyClient.user.id,
-        username: readyClient.user.username
-      });
 
       try {
         for (const cmd of commands) {
@@ -64,10 +60,16 @@ async function bootstrap() {
             console.log(`✅ Registered /${cmd.data.name} command`);
           }
         }
+        canAutoJoinSavedChannels = true;
         console.log(`📁 Successfully loaded: ${commands.length}`);
       } catch (error) {
         console.error("Failed to register slash commands:", error);
       }
+
+      await lavalink.init({
+        id: readyClient.user.id,
+        username: readyClient.user.username
+      });
 
       ensureGuildSettingsTable();
     });
@@ -107,6 +109,11 @@ async function bootstrap() {
 
     lavalink.nodeManager.on("connect", (node) => {
       console.log(`✅ Lavalink Node "${node.id}" connected!`);
+
+      if (!canAutoJoinSavedChannels) {
+        console.log("⏭️ Skipping auto-join because commands are not fully loaded yet.");
+        return;
+      }
 
       const stmt = db.prepare("SELECT * FROM guild_settings");
       const allSettings = stmt.all() as { guild_id: string, voice_channel_id: string, text_channel_id: string }[];
