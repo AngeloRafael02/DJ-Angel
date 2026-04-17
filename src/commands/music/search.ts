@@ -3,9 +3,9 @@ import { Command } from "../../interfaces.js";
 import { dbCache } from "../../database/search-cache.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { DriveFile } from "../../interfaces.js";
-import { getShortId } from "../../utils/crypto.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
 import { fetchAllMp3sRecursive } from "../../core/cache.js";
+import { idRegistry } from "../../database/id-registry.js";
 
 const searchCommand: Command = {
   data: new SlashCommandBuilder()
@@ -66,7 +66,7 @@ const searchCommand: Command = {
       const pageMatches = matches.slice(startIndex, startIndex + pageSize);
 
       const list = pageMatches
-        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${getShortId(file.id)}\`)`)
+        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${idRegistry.getOrCreateShortId(file.id)}\`)`)
         .join("\n");
 
       const content = `🔎 **Search Results** for "**${query}**" (Page ${page}/${totalPages})\n\n${list}`;

@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, ActionR
 
 import { Command } from "../../interfaces.js";
 import { getPlaylistFolderId, DEFAULT_FOLDER_ID } from "../../services/playlist.js";
-import { getShortId } from "../../utils/crypto.js";
+import { idRegistry } from "../../database/id-registry.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
 import { DriveFile } from "../../interfaces.js";
@@ -154,7 +154,7 @@ const listCommand: Command = {
         const folderStartIndex = (page - 1) * pageSize;
         const pageFolders = sortedFolders.slice(folderStartIndex, folderStartIndex + pageSize);
         const folderList = pageFolders
-          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${getShortId(folder.id)}\`)`)
+          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${idRegistry.getOrCreateShortId(folder.id)}\`)`)
           .join("\n");
 
         const sortLabel = {
@@ -177,7 +177,7 @@ const listCommand: Command = {
 
       const fileList = pageFiles
         .map((file, index) => {
-          const shortId = getShortId(file.id!);
+          const shortId = idRegistry.getOrCreateShortId(file.id!);
 
           const button = new ButtonBuilder()
             .setCustomId(`play_${shortId}`)

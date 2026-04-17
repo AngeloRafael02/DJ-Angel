@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, ButtonInteraction } from "discord.js";
 import { lavalink } from '../index.js';
-import { resolveShortId } from "../utils/crypto.js";
+import { idRegistry } from "../database/id-registry.js";
 import { validateVoiceState } from "../utils/validations.js";
 import { drive } from "../services/google-drive.js";
 
@@ -29,7 +29,7 @@ export async function playDriveSong(
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    const resolved = resolveShortId(id.trim());
+    const resolved = idRegistry.resolveShortId(id.trim());
     if (!resolved) {
       await interaction.editReply("Song not found in cache (it may have expired). Please refresh the library with `/scan`, then try again.");
       return;
