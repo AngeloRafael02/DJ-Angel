@@ -154,7 +154,7 @@ const listCommand: Command = {
         const folderStartIndex = (page - 1) * pageSize;
         const pageFolders = sortedFolders.slice(folderStartIndex, folderStartIndex + pageSize);
         const folderList = pageFolders
-          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${folder.id}\`)`)
+          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${getShortId(folder.id)}\`)`)
           .join("\n");
 
         const sortLabel = {

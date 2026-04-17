@@ -12,8 +12,8 @@ const playCommand: Command = {
     .setDescription("Play an MP3 from Google Drive in the current voice channel")
     .addStringOption((option) =>
       option
-        .setName("songid")
-        .setDescription("the ID of the song (Six characters long)")
+        .setName("id")
+        .setDescription("the ID of the song or folder (Six characters long)")
         .setRequired(true)
         .setMaxLength(6)
     ),
