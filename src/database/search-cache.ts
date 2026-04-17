@@ -239,6 +239,8 @@ export const dbCache = {
       name: row.name,
       mimeType: row.mimeType,
       createdTime: row.createdTime,
+      folderId: row.folderId,
+      folderName: row.folderName,
     }));
 
     return files as unknown as T;
@@ -277,6 +279,8 @@ export const dbCache = {
       name: row.name,
       mimeType: row.mimeType,
       createdTime: row.createdTime,
+      folderId: row.folderId,
+      folderName: row.folderName,
     }));
   },
 
