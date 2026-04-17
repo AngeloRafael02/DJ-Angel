@@ -35,19 +35,75 @@ export const computeShortIdWithCollision = (driveId: string): string => {
   return shortId;
 };
 
+export const computeFolderShortIdWithCollision = (driveId: string): string => {
+  let salt = 0;
+  let shortId = baseShortId(driveId);
+  const checkCollision = db.prepare(`
+    SELECT id FROM drive_cache WHERE short_id = ?
+    UNION ALL
+    SELECT id FROM drive_folders WHERE short_id = ?
+    LIMIT 1
+  `);
+
+  while (true) {
+    const collision = checkCollision.get(shortId, shortId) as { id: string } | undefined;
+    if (!collision || collision.id === driveId) break;
+
+    shortId = crypto
+      .createHash('md5')
+      .update(driveId + (salt++))
+      .digest('hex')
+      .substring(0, 6)
+      .toUpperCase();
+  }
+
+  return shortId;
+};
+
 const getDriveCacheColumns = (): Array<{ name: string }> => {
   return db
     .prepare('PRAGMA table_info(drive_cache)')
     .all() as Array<{ name: string }>;
 };
 
-const migrateOldDriveCacheIfNeeded = (): void => {
+const ensureDriveFoldersSchema = (): void => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS drive_folders (
       id TEXT PRIMARY KEY,
+      short_id TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL
     )
   `);
+
+  const columns = db
+    .prepare('PRAGMA table_info(drive_folders)')
+    .all() as Array<{ name: string }>;
+  const hasShortId = columns.some(c => c.name === 'short_id');
+
+  if (!hasShortId) {
+    db.exec('ALTER TABLE drive_folders ADD COLUMN short_id TEXT');
+  }
+
+  const rows = db
+    .prepare('SELECT id, short_id FROM drive_folders')
+    .all() as Array<{ id: string; short_id: string | null }>;
+
+  const updateShortIdStmt = db.prepare('UPDATE drive_folders SET short_id = ? WHERE id = ?');
+
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      if (row.short_id) continue;
+      const shortId = computeFolderShortIdWithCollision(row.id);
+      updateShortIdStmt.run(shortId, row.id);
+    }
+  });
+
+  tx();
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_drive_folders_short_id ON drive_folders(short_id)');
+};
+
+const migrateOldDriveCacheIfNeeded = (): void => {
+  ensureDriveFoldersSchema();
 
   const hasDriveCacheTable = !!db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='drive_cache'")
@@ -98,8 +154,8 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   createNewDriveCacheTable();
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_folders (id, name)
-    VALUES (?, ?)
+    INSERT OR IGNORE INTO drive_folders (id, short_id, name)
+    VALUES (?, ?, ?)
   `);
   const insertCacheStmt = db.prepare(`
     INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
@@ -119,7 +175,8 @@ const migrateOldDriveCacheIfNeeded = (): void => {
       if (!driveId || !name || !createdTime || !mimeType || !folderId) continue;
 
       const shortId = computeShortIdWithCollision(driveId);
-      insertStmt.run(folderId, folderName);
+      const folderShortId = computeFolderShortIdWithCollision(folderId);
+      insertStmt.run(folderId, folderShortId, folderName);
       insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
     }
   });
@@ -178,8 +235,8 @@ export const dbCache = {
     const normalizedFiles: DriveFile[] = files as DriveFile[];
 
     const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_folders (id, name)
-      VALUES (?, ?)
+      INSERT OR IGNORE INTO drive_folders (id, short_id, name)
+      VALUES (?, ?, ?)
     `);
     const insertCacheStmt = db.prepare(`
       INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
@@ -201,7 +258,8 @@ export const dbCache = {
         if (!driveId || !name || !createdTime || !mimeType || !folderId || !folderName) continue;
 
         const shortId = computeShortIdWithCollision(driveId);
-        insertStmt.run(folderId, folderName);
+        const folderShortId = computeFolderShortIdWithCollision(folderId);
+        insertStmt.run(folderId, folderShortId, folderName);
         insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
       }
 
@@ -281,6 +339,27 @@ export const dbCache = {
       createdTime: row.createdTime,
       folderId: row.folderId,
       folderName: row.folderName,
+    }));
+  },
+
+  /**
+   * Returns folder name -> short_id mappings for debugging.
+   */
+  getFolderShortIdMappings(): Array<{ id: string; shortId: string; name: string }> {
+    ensureDriveCacheSchema();
+
+    const rows = db
+      .prepare(`
+        SELECT id, short_id, name
+        FROM drive_folders
+        ORDER BY name COLLATE NOCASE
+      `)
+      .all() as Array<{ id: string; short_id: string; name: string }>;
+
+    return rows.map(row => ({
+      id: row.id,
+      shortId: row.short_id,
+      name: row.name,
     }));
   },
 

@@ -26,7 +26,7 @@ const playCommand: Command = {
       return;
     }
 
-    await playDriveSong(interaction, interaction.options.getString("songid", true))
+    await playDriveSong(interaction, interaction.options.getString("id", true))
   },
 };
 

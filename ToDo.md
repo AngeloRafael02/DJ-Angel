@@ -8,6 +8,7 @@
         - create new Table 'drive_folders' table with 'id' PRIMARY KEY and 'name' TEXT
         - add 'folder_id' column to drive_cache, reference key new drive_folders Table column 'id'
         - create /play-folder command to put all songs of a folder to a queue and play them
+- Maybe remove 'src\utils\crypto.ts' to directly use 'src\database\id-registry.ts' instead
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
 

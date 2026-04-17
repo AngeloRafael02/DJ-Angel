@@ -4,6 +4,6 @@ export const getShortId = (driveId: string): string => {
   return idRegistry.getOrCreateShortId(driveId);
 }
 
-export const getOriginalId = (shortId: string): string | undefined => {
-  return idRegistry.getOriginalId(shortId);
+export const resolveShortId = (shortId: string) => {
+  return idRegistry.resolveShortId(shortId);
 }

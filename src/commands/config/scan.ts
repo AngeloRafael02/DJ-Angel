@@ -27,9 +27,15 @@ const scanCommand: Command = {
 
       // 3. Overwrite the cache in SQLite
       dbCache.set(guildId, allFiles, 60 * 60 * 1000);
+      const folderMappings = dbCache.getFolderShortIdMappings();
+      console.log(
+        `[SCAN DEBUG] Folder short IDs (${folderMappings.length}):\n` +
+        folderMappings
+          .map(row => `${row.name} -> ${row.shortId} (${row.id})`)
+          .join("\n")
+      );
 
       await interaction.editReply(`✅ Library refreshed! Found **${allFiles.length}** MP3 files.`);
-      
     } catch (error) {
       console.error("Refresh Error:", error);
       await interaction.editReply("Failed to refresh the library. Check Google Drive permissions.");

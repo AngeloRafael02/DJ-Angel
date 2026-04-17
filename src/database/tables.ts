@@ -17,6 +17,7 @@ export const createNewDriveCacheTable = (): void => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS drive_folders (
       id TEXT PRIMARY KEY,
+      short_id TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL
     )
   `);
