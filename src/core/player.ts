@@ -2,7 +2,6 @@ import { ChatInputCommandInteraction, ButtonInteraction } from "discord.js";
 import { lavalink } from '../index.js';
 import { idRegistry } from "../database/id-registry.js";
 import { validateVoiceState } from "../utils/validations.js";
-import { drive } from "../services/google-drive.js";
 
 /**
  * Shared logic to play a song from Google Drive via Lavalink on Buttons and Manual Commands
@@ -48,30 +47,48 @@ export async function playDriveSong(
     const port = process.env.STREAM_PORT || 3001;
     const ip = process.env.STREAM_HOST || "127.0.0.1";
     const secret = process.env.STREAM_SECRET;
+    const [firstSong, ...remainingSongs] = resolved.songs;
     const queuedTitles: string[] = [];
 
-    for (const song of resolved.songs) {
+    const processSong = async (song: any) => {
       const trackUrl = `http://${ip}:${port}/stream/${song.id}?token=${secret}`;
-
-      console.log(`[TRACK URL]: ${trackUrl}`);
       const res = await player.search({ query: trackUrl, source: "http" }, interaction.user);
-      console.log(`[Lavalink Search] LoadType: ${res.loadType}`);
-      if (res.exception) {
-        console.error(`[Lavalink Search] Exception:`, res.exception);
-      }
 
-      if (!res.tracks.length) {
-        console.warn(`[Lavalink Search] No tracks found for URL. Check if HTTP source is enabled in Lavalink application.yml`);
-        continue;
+      if (res.tracks.length > 0) {
+        const track = res.tracks[0];
+        track.info.title = song.name || "Drive Song";
+        player.queue.add(track);
+        return track.info.title;
       }
+      return null;
+    };
 
-      const track = res.tracks[0];
-      const meta = await drive.files.get({ fileId: song.id, fields: "name" });
-      const title = meta.data.name || song.name || "Drive Song";
-      track.info.title = title;
-      player.queue.add(track);
-      queuedTitles.push(title);
+    const firstTitle = await processSong(firstSong);
+
+    if (firstTitle) {
+      queuedTitles.push(firstTitle);
+
+      if (!player.playing && !player.paused) {
+        await player.play();
+        await interaction.editReply(`▶️ Now playing: **${firstTitle}**... (Loading the rest of the folder in background)`);
+      } else {
+        await interaction.editReply(`📝 Added to queue: **${firstTitle}**...`);
+      }
     }
+
+    (async () => {
+      for (const song of remainingSongs) {
+        try {
+          const title = await processSong(song);
+          if (title) {
+            console.log(`[Background] Queued: ${title}`);
+          }
+        } catch (err) {
+          console.error(`[Background Error] Failed to queue song ${song.id}:`, err);
+        }
+      }
+      console.log(`[Background] Finished loading ${remainingSongs.length} tracks.`);
+    })();
 
     if (!queuedTitles.length) {
       await interaction.editReply("No playable tracks were found for this item.");

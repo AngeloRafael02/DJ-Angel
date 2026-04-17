@@ -1,13 +1,6 @@
 # To Do
 
 ## Unfinished
-- create playlist groups feature by putting songs on sub folders inside public folder
-    - Have a specific command to list all folders (playlist) inside Root Folder (all songs group on the folder no matter how deep it is from the root folder, is counted as a playlist)
-        - modify '/play id' so that if the arguments is a folder , add all mp3 files of that folder to queue - DONE
-    - refactor Sqlite DB Structure to also store Folders/playlist - DONE
-        - create new Table 'drive_folders' table with 'id' PRIMARY KEY, 'name' TEXT, and 'short_id' TEXT - DONE
-        - add 'folder_id' column to drive_cache, reference key new drive_folders Table column 'id' - DONE
-    - '/play folder-id' may take longer expecially if there are more songs in the folder. refactore to immediately play the first song found and add the rest into queue on background.
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
 
@@ -37,6 +30,13 @@
 - Bot autojoins on last /move voice Channel when it restarts - DONE
 - Fized Auto Join timing: Only Join when all commands in /commands are registered - DONE
 - Maybe remove 'src\utils\crypto.ts' to directly use 'src\database\id-registry.ts' instead - DONE
+- create playlist groups feature by putting songs on sub folders inside public folder - DONE
+    - Have a specific command to list all folders (playlist) inside Root Folder (all songs group on the folder no matter how deep it is from the root folder, is counted as a playlist)
+        - modify '/play id' so that if the arguments is a folder , add all mp3 files of that folder to queue - DONE
+    - refactor Sqlite DB Structure to also store Folders/playlist - DONE
+        - create new Table 'drive_folders' table with 'id' PRIMARY KEY, 'name' TEXT, and 'short_id' TEXT - DONE
+        - add 'folder_id' column to drive_cache, reference key new drive_folders Table column 'id' - DONE
+    - '/play folder-id' may take longer expecially if there are more songs in the folder. refactor to immediately play the first song found and add the rest into queue on background. - Implemented Lazy loading of songs to Queue. DONE
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
