@@ -4,7 +4,7 @@ import { DriveFile } from '../interfaces.js';
 import { db, METADATA_KEYS } from '../core/db-instance.js';
 import { createNewDriveCacheTable, ensureGuildSettingsTable, ensureMetadataTable } from './tables.js';
 
-export const baseShortId = (driveId: string): string =>
+const baseShortId = (driveId: string): string =>
   crypto
     .createHash('md5')
     .update(driveId)

@@ -24,10 +24,10 @@ setDefaultAutoSelectFamily(false);
 
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,           // Required to interact with servers
-    GatewayIntentBits.GuildMessages,    // Required to read commands
-    GatewayIntentBits.MessageContent,   // Required if using prefix commands (e.g., !play)
-    GatewayIntentBits.GuildVoiceStates, // CRITICAL: Required for the bot to join voice channels
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 

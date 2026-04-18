@@ -7,8 +7,7 @@ import { isAuthorized } from "../../utils/auth.js";
 import { dbCache } from "../../database/search-cache.js";
 import { DriveFile } from "../../interfaces.js";
 import { fetchAllMp3sRecursive } from "../../core/cache.js";
-
-type SortOption = "name_asc" | "name_desc" | "date_desc" | "date_asc";
+import { SortOption } from "../../interfaces.js";
 
 const sortChoices = [
   { name: "Alphabetical (A-Z)", value: "name_asc" },

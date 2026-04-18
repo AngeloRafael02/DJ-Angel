@@ -1,8 +1,6 @@
 # To Do
 
 ## Unfinished
-- Add Documentation
-    - Docstrings all functions
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
 
@@ -40,6 +38,7 @@
         - add 'folder_id' column to drive_cache, reference key new drive_folders Table column 'id' - DONE
     - '/play folder-id' may take longer expecially if there are more songs in the folder. refactor to immediately play the first song found and add the rest into queue on background. - Implemented Lazy loading of songs to Queue. DONE
 - Add Buttons for '/list folders' for more convenient experience - DONE
+- Add Some Documentation - DONE
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
