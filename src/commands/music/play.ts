@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, } from 
 
 import { Command } from "../../interfaces.js";
 import { isAuthorized } from "../../utils/auth.js";
-import { playDriveSong } from "../../core/player.js";
+import { playDriveSong } from "../../core/mp3-player.js";
 
 
 const playCommand: Command = {

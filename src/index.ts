@@ -7,7 +7,7 @@ import express from 'express';
 import { loadCommands } from "./core/load-commands.js";
 import { dbCache } from "./database/search-cache.js";
 import { streamRouter } from "./routes/stream.js";
-import { playDriveSong } from "./core/player.js";
+import { playDriveSong } from "./core/mp3-player.js";
 import { db } from "./core/db-instance.js";
 import { ensureGuildSettingsTable } from "./database/tables.js";
 
