@@ -48,7 +48,7 @@ const listCommand: Command = {
     .addSubcommand((subcommand) =>
       withPageAndSort(
         subcommand
-          .setName("folder")
+          .setName("folders")
           .setDescription("List all cached playlist folders")
       )
     ),
@@ -64,147 +64,98 @@ const listCommand: Command = {
     const subcommand = interaction.options.getSubcommand();
     const page = interaction.options.getInteger("page") ?? 1;
     const sort = (interaction.options.getString("sort") ?? "name_asc") as SortOption;
-    const guildId = interaction.guildId ?? "DM_CHANNEL"; // Fallback for DMs
+    const guildId = interaction.guildId ?? "DM_CHANNEL";
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
       let allFiles = dbCache.get<DriveFile[]>(guildId);
-
       if (!allFiles) {
         allFiles = await fetchAllMp3sRecursive(folderId);
         dbCache.set(guildId, allFiles, 60 * 60 * 1000);
       }
 
-      const sortedFiles = [...allFiles].sort((a, b) => {
-        switch (sort) {
-          case "name_desc":
-            return b.name!.localeCompare(a.name!);
-          case "date_desc":
-            return new Date(b.createdTime!).getTime() - new Date(a.createdTime!).getTime();
-          case "date_asc":
-            return new Date(a.createdTime!).getTime() - new Date(b.createdTime!).getTime();
-          case "name_asc":
-          default:
-            return a.name!.localeCompare(b.name!);
-        }
-      });
-
-      if (sortedFiles.length === 0) {
-        await interaction.editReply("No MP3 files found.");
+      if (allFiles.length === 0) {
+        await interaction.editReply("No items found in the library.");
         return;
       }
 
-      const pageSize = 10;
-      const totalPages = Math.max(1, Math.ceil(sortedFiles.length / pageSize));
+      // 1. Prepare the Data based on Subcommand
+      let displayItems: { id: string; name: string; date: number }[] = [];
 
+      if (subcommand === "folders") {
+        const folderMap = new Map<string, { id: string; name: string; latest: number; oldest: number }>();
+        for (const file of allFiles) {
+          if (!file.folderId) continue;
+          const existing = folderMap.get(file.folderId);
+          const time = file.createdTime ? new Date(file.createdTime).getTime() : 0;
+
+          if (!existing) {
+            folderMap.set(file.folderId, { id: file.folderId, name: file.folderName ?? "Unknown", latest: time, oldest: time || Infinity });
+          } else {
+            existing.latest = Math.max(existing.latest, time);
+            if (time > 0) existing.oldest = Math.min(existing.oldest, time);
+          }
+        }
+        displayItems = [...folderMap.values()].map(f => ({
+          id: f.id,
+          name: f.name,
+          date: sort === "date_asc" ? f.oldest : f.latest
+        }));
+      } else {
+        displayItems = allFiles.map(f => ({
+          id: f.id!,
+          name: f.name!,
+          date: new Date(f.createdTime!).getTime()
+        }));
+      }
+
+      // 2. Sort the display items
+      displayItems.sort((a, b) => {
+        if (sort === "name_asc") return a.name.localeCompare(b.name);
+        if (sort === "name_desc") return b.name.localeCompare(a.name);
+        if (sort === "date_asc") return a.date - b.date;
+        return b.date - a.date; // date_desc
+      });
+
+      // 3. Pagination
+      const pageSize = 10;
+      const totalPages = Math.ceil(displayItems.length / pageSize);
       if (page > totalPages) {
         await interaction.editReply(`Page ${page} doesn't exist. Max pages: **${totalPages}**.`);
         return;
       }
 
       const startIndex = (page - 1) * pageSize;
-      const pageFiles = sortedFiles.slice(startIndex, startIndex + pageSize);
+      const pageItems = displayItems.slice(startIndex, startIndex + pageSize);
 
-      if (subcommand === "folder") {
-        const folderMap = new Map<string, { id: string; name: string; latestCreatedAt: number; oldestCreatedAt: number }>();
-
-        for (const file of allFiles) {
-          const id = file.folderId;
-          if (!id) continue;
-
-          const name = file.folderName ?? id;
-          const timestamp = file.createdTime ? new Date(file.createdTime).getTime() : 0;
-          const existing = folderMap.get(id);
-
-          if (!existing) {
-            folderMap.set(id, { id, name, latestCreatedAt: timestamp, oldestCreatedAt: timestamp || Number.MAX_SAFE_INTEGER });
-          } else {
-            existing.latestCreatedAt = Math.max(existing.latestCreatedAt, timestamp);
-            if (timestamp > 0) existing.oldestCreatedAt = Math.min(existing.oldestCreatedAt, timestamp);
-          }
-        }
-
-        const folders = [...folderMap.values()];
-        const sortedFolders = folders.sort((a, b) => {
-          switch (sort) {
-            case "name_desc":
-              return b.name.localeCompare(a.name);
-            case "date_desc":
-              return b.latestCreatedAt - a.latestCreatedAt;
-            case "date_asc":
-              return a.oldestCreatedAt - b.oldestCreatedAt;
-            case "name_asc":
-            default:
-              return a.name.localeCompare(b.name);
-          }
-        });
-
-        if (sortedFolders.length === 0) {
-          await interaction.editReply("No folders found in the current cached playlist.");
-          return;
-        }
-
-        const folderTotalPages = Math.max(1, Math.ceil(sortedFolders.length / pageSize));
-
-        if (page > folderTotalPages) {
-          await interaction.editReply(`Page ${page} doesn't exist. Max pages: **${folderTotalPages}**.`);
-          return;
-        }
-
-        const folderStartIndex = (page - 1) * pageSize;
-        const pageFolders = sortedFolders.slice(folderStartIndex, folderStartIndex + pageSize);
-        const folderList = pageFolders
-          .map((folder, index) => `${folderStartIndex + index + 1}. **${folder.name}** (Folder ID: \`${idRegistry.getOrCreateShortId(folder.id)}\`)`)
-          .join("\n");
-
-        const sortLabel = {
-          name_asc: "A-Z",
-          name_desc: "Z-A",
-          date_desc: "Newest Song in Folder",
-          date_asc: "Oldest Song in Folder"
-        }[sort];
-
-        const content = `📁 **Playlist Folders** [Sorted by: ${sortLabel}] (Page ${page}/${folderTotalPages})\n\n${folderList}`;
-
-        await interaction.editReply(
-          content.length > 2000 ? content.substring(0, 1990) + "..." : content
-        );
-        return;
-      }
-
+      // 4. Build UI
       const rows: ActionRowBuilder<ButtonBuilder>[] = [];
       let currentRow = new ActionRowBuilder<ButtonBuilder>();
 
-      const fileList = pageFiles
-        .map((file, index) => {
-          const shortId = idRegistry.getOrCreateShortId(file.id!);
+      const listText = pageItems.map((item, index) => {
+        const shortId = idRegistry.getOrCreateShortId(item.id);
+        const globalIndex = startIndex + index + 1;
 
-          const button = new ButtonBuilder()
-            .setCustomId(`play_${shortId}`)
-            .setLabel(`${startIndex + index + 1}`)
-            .setStyle(ButtonStyle.Secondary);
+        const button = new ButtonBuilder()
+          .setCustomId(`play_${shortId}`)
+          .setLabel(`${globalIndex}`)
+          .setStyle(subcommand === "folders" ? ButtonStyle.Success : ButtonStyle.Secondary);
 
-          if (currentRow.components.length < 5) {
-            currentRow.addComponents(button);
-          } else {
-            rows.push(currentRow);
-            currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
-          }
-
-          return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`;
-        })
-        .join("\n");
+        if (currentRow.components.length < 5) {
+          currentRow.addComponents(button);
+        } else {
+          rows.push(currentRow);
+          currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
+        }
+        return `${globalIndex}. **${item.name}** (\`${shortId}\`)`;
+      }).join("\n");
 
       if (currentRow.components.length > 0) rows.push(currentRow);
 
-      const sortLabel = {
-        name_asc: "A-Z",
-        name_desc: "Z-A",
-        date_desc: "Newest",
-        date_asc: "Oldest"
-      }[sort];
-
-      const content = `🎵 **Library** [Sorted by: ${sortLabel}] (Page ${page}/${totalPages})\n\n${fileList}`;
+      // 5. Final Output
+      const icon = subcommand === "folders" ? "📁 **Playlist Folders**" : "🎵 **Library**";
+      const sortLabel = sort.replace("_", " ").toUpperCase();
+      const content = `${icon} [${sortLabel}] (Page ${page}/${totalPages})\n\n${listText}`;
 
       await interaction.editReply({
         content: content.length > 2000 ? content.substring(0, 1990) + "..." : content,
@@ -212,10 +163,10 @@ const listCommand: Command = {
       });
 
     } catch (error) {
-      console.error("Google Drive API Error:", error);
-      await interaction.editReply("Error fetching the file list. Check folder permissions.");
+      console.error("List Command Error:", error);
+      await interaction.editReply("Error processing the list.");
     }
-  },
+  }
 };
 
 export default listCommand;

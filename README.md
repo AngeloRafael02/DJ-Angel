@@ -4,7 +4,7 @@ A Discord DJ Bot that uses a public Google Drive folder as its music library
 ## Concept/Flowchart
 - The Project should look work like this [chart](https://lucid.app/lucidchart/f29097d4-c392-41ac-a090-356e71395e6d/edit?viewport_loc=-898%2C79%2C2934%2C1405%2C0_0&invitationId=inv_2b26c7e2-4c6d-42f9-8771-7ab5f85408cd)
 - There are two versions:
-    - The Legacy Version ([v1.0-ffmpeg](https://github.com/AngeloRafael02/DJ-Angel/releases/tag/v1.0-ffmpeg)) that uses FFMPEG
+    - The Legacy Version ([v1.0-ffmpeg](https://github.com/AngeloRafael02/DJ-Angel/releases/tag/v1.0-ffmpeg)) that uses FFMPEG (with limited commands)
     - This Current version uses Lavalink
 
 
