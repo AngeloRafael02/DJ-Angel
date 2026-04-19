@@ -1,5 +1,8 @@
-import crypto from 'crypto';
+/**
+ * This file handles code for accesing Mp3 Files and Google Drive Folder metadata 
+ */
 
+import crypto from 'crypto';
 import { DriveFile } from '../interfaces.js';
 import { db, METADATA_KEYS } from '../core/db-instance.js';
 import { createNewDriveCacheTable, ensureGuildSettingsTable, ensureMetadataTable } from './tables.js';

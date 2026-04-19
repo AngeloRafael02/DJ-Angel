@@ -2,7 +2,7 @@ import { drive } from "../services/google-drive.js";
 import { DriveFile } from "../interfaces.js";
 
 /**
- * Recursively fetches all MP3 files from a folder and its subfolders.
+ * Recursively fetches all MP3 files from the Google Drive folder and its subfolders.
  */
 export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile[]> => {
   const allFiles: DriveFile[] = [];

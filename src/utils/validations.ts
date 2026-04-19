@@ -1,5 +1,10 @@
 import { GuildMember, RepliableInteraction } from "discord.js";
 
+/**
+ * Used to check if certain commands can only be executed  in teh same channel as the bot.
+ * @param interaction type: RepliableInteraction
+ * @returns Promise<string | null>
+ */
 export const validateVoiceState = async (interaction: RepliableInteraction) => {
     const member = interaction.member as GuildMember;
     const voiceChannelId = member?.voice.channelId;

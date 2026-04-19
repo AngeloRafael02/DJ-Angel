@@ -1,3 +1,8 @@
+/**
+ * This file handles code for accessing file/folder IDs and their 
+ * shortened version (stored in the database)
+ */
+
 import { ensureDriveCacheSchema, computeShortIdWithCollision } from './search-cache.js';
 import { db, METADATA_KEYS } from '../core/db-instance.js';
 

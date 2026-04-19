@@ -1,3 +1,7 @@
+/**
+ * Thie File Handles initialization of Database Tables
+ */
+
 import { db, METADATA_KEYS } from '../core/db-instance.js';
 
 export const ensureMetadataTable = (): void => {

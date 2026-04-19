@@ -6,7 +6,7 @@ import { validateVoiceState } from "../utils/validations.js";
 /**
  * Shared logic to play a song from Google Drive via Lavalink on Buttons and Manual Commands
  * @remarks
- * This function is used by the '/scan' command
+ * This function is used by the '/play' command and buttons with 'play_' prefix
  */
 export async function playDriveSong(
   interaction: ChatInputCommandInteraction | ButtonInteraction,
