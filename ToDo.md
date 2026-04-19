@@ -1,6 +1,7 @@
 # To Do
 
 ## Unfinished
+- /search and //playlist take too long to register, fix bottleneck 
 - Research about implementeing using a PRIVATE Google Dive Folder as a playlist
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
