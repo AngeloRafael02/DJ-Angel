@@ -9,7 +9,7 @@ const playCommand: Command = {
   cooldown: 5,
   data: new SlashCommandBuilder()
     .setName("play")
-    .setDescription("Play an MP3 from Google Drive in the current voice channel")
+    .setDescription("Play a Song of a Folder/Playlist from Google Drive in the current voice channel")
     .addStringOption((option) =>
       option
         .setName("id")
