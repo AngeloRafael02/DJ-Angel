@@ -42,6 +42,14 @@ const listCommand: Command = {
         subcommand
           .setName("songs")
           .setDescription("List all MP3 songs in the library")
+          .addStringOption((option) =>
+            option
+              .setName("folder-id")
+              .setDescription("Optional folder short ID (e.g. ABC123) to list songs from that folder")
+              .setRequired(false)
+              .setMinLength(6)
+              .setMaxLength(6)
+          )
       )
     )
     .addSubcommand((subcommand) =>
@@ -63,6 +71,7 @@ const listCommand: Command = {
     const subcommand = interaction.options.getSubcommand();
     const page = interaction.options.getInteger("page") ?? 1;
     const sort = (interaction.options.getString("sort") ?? "name_asc") as SortOption;
+    const folderShortId = interaction.options.getString("folder-id")?.trim().toUpperCase();
     const guildId = interaction.guildId ?? "DM_CHANNEL";
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
@@ -73,8 +82,16 @@ const listCommand: Command = {
         dbCache.set(guildId, allFiles, 60 * 60 * 1000);
       }
 
+      if (subcommand === "songs" && folderShortId) {
+        allFiles = dbCache.getByFolderShortId(folderShortId);
+      }
+
       if (allFiles.length === 0) {
-        await interaction.editReply("No items found in the library.");
+        await interaction.editReply(
+          subcommand === "songs" && folderShortId
+            ? `No songs found for folder id \`${folderShortId}\`.`
+            : "No items found in the library."
+        );
         return;
       }
 

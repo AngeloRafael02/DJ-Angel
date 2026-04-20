@@ -1,7 +1,7 @@
 # To Do
 
 ## Unfinished
-- /search and //playlist take too long to register, fix bottleneck 
+- /search and /playlist take too long to register, fix bottleneck
 - Research about implementeing using a PRIVATE Google Dive Folder as a playlist
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
@@ -41,6 +41,7 @@
     - '/play folder-id' may take longer expecially if there are more songs in the folder. refactor to immediately play the first song found and add the rest into queue on background. - Implemented Lazy loading of songs to Queue. DONE
 - Add Buttons for '/list folders' for more convenient experience - DONE
 - Add Some Documentation - DONE
+- Add '/list songs' argument called 'folder-id' to return only songs from that sub-folder - DONE
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this

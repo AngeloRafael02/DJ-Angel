@@ -346,6 +346,40 @@ export const dbCache = {
   },
 
   /**
+   * Retrieve cached drive files that belong to a folder short id.
+   */
+  getByFolderShortId(folderShortId: string): Array<DriveFile> {
+    ensureFresh();
+
+    const shortId = folderShortId?.trim().toUpperCase() ?? '';
+    if (!shortId) return [];
+
+    const rows = db
+      .prepare(`
+        SELECT
+          dc.id,
+          dc.name,
+          dc.mimeType,
+          dc.createdTime,
+          dc.folder_id AS folderId,
+          df.name AS folderName
+        FROM drive_cache dc
+        LEFT JOIN drive_folders df ON df.id = dc.folder_id
+        WHERE df.short_id = ?
+      `)
+      .all(shortId) as DriveFile[];
+
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      mimeType: row.mimeType,
+      createdTime: row.createdTime,
+      folderId: row.folderId,
+      folderName: row.folderName,
+    }));
+  },
+
+  /**
    * Returns folder name -> short_id mappings for debugging.
    */
   getFolderShortIdMappings(): Array<{ id: string; shortId: string; name: string }> {
@@ -402,6 +436,3 @@ export const dbCache = {
     return deleted;
   },
 };
-
-// Ensure schema is ready as soon as the module is imported.
-ensureDriveCacheSchema();
