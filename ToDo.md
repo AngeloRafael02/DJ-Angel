@@ -2,7 +2,6 @@
 
 ## Unfinished
 - /search and /playlist take too long to register, fix bottleneck
-- Research about implementeing using a PRIVATE Google Dive Folder as a playlist
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
 
 
@@ -42,8 +41,7 @@
 - Add Buttons for '/list folders' for more convenient experience - DONE
 - Add Some Documentation - DONE
 - Add '/list songs' argument called 'folder-id' to return only songs from that sub-folder - DONE
+- Research about implementing using a PRIVATE Google Dive Folder as a playlist - DONE, entirely possible this whole time
 
 ## CANCELLED
 - Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
-
-__Additional Notes on this [link](https://gemini.google.com/share/de73c37028cd)__
