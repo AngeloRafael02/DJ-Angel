@@ -1,10 +1,10 @@
 # To Do
 
 ## Unfinished
-- Indicate in '/list folders' the path of each folder, or atleas how the parent of each folder, show 'root' on the base folder.
+- Indicate in '/list folders' the path of each folder, or atleast show the parent of each folder, show 'root' on the base folder.
 - /search and /playlist take too long to register, fix bottleneck
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
-
+- Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE
@@ -45,4 +45,3 @@
 - Research about implementing using a PRIVATE Google Dive Folder as a playlist - DONE, entirely possible this whole time
 
 ## CANCELLED
-- Research (and possibly migrate) using docker (include debian, java, lavalink, nodeJS, npm, firewall rules, etc. ) - CANCELLED, Forks of the Project can do this
