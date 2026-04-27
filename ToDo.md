@@ -1,6 +1,7 @@
 # To Do
 
 ## Unfinished
+- Add Text on '/list' before buttons, telling that each button corresponds to a song in the prompt, click the button to play it.
 - Indicate in '/list folders' the path of each folder, or atleast show the parent of each folder, show 'root' on the base folder.
 - /search and /playlist take too long to register, fix bottleneck
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
