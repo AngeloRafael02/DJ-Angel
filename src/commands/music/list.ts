@@ -171,7 +171,9 @@ const listCommand: Command = {
       // 5. Final Output
       const icon = subcommand === "folders" ? "📁 **Playlist Folders**" : "🎵 **Library**";
       const sortLabel = sort.replace("_", " ").toUpperCase();
-      const content = `${icon} [${sortLabel}] (Page ${page}/${totalPages})\n\n${listText}`;
+      const buttonHint =`Each numbered button corresponds to the same numbered ${subcommand} above. Click a button to play the ${subcommand.slice(0,-1)} or add it to the queue.`
+
+      const content = `${icon} [${sortLabel}] (Page ${page}/${totalPages})\n\n${listText}\n\n${buttonHint}`;
 
       await interaction.editReply({
         content: content.length > 2000 ? content.substring(0, 1990) + "..." : content,
