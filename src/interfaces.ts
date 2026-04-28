@@ -11,6 +11,7 @@ export type DriveFile = {
   createdTime?: string;
   folderId?: string;
   folderName?: string;
+  folderPath?: string;
 };
 
 export type SortOption = "name_asc" | "name_desc" | "date_desc" | "date_asc";

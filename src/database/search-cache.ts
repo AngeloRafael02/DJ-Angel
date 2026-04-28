@@ -74,7 +74,8 @@ const ensureDriveFoldersSchema = (): void => {
     CREATE TABLE IF NOT EXISTS drive_folders (
       id TEXT PRIMARY KEY,
       short_id TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL
+      name TEXT NOT NULL,
+      folder_path TEXT
     )
   `);
 
@@ -82,9 +83,13 @@ const ensureDriveFoldersSchema = (): void => {
     .prepare('PRAGMA table_info(drive_folders)')
     .all() as Array<{ name: string }>;
   const hasShortId = columns.some(c => c.name === 'short_id');
+  const hasFolderPath = columns.some(c => c.name === 'folder_path');
 
   if (!hasShortId) {
     db.exec('ALTER TABLE drive_folders ADD COLUMN short_id TEXT');
+  }
+  if (!hasFolderPath) {
+    db.exec('ALTER TABLE drive_folders ADD COLUMN folder_path TEXT');
   }
 
   const rows = db
@@ -157,8 +162,8 @@ const migrateOldDriveCacheIfNeeded = (): void => {
   createNewDriveCacheTable();
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_folders (id, short_id, name)
-    VALUES (?, ?, ?)
+    INSERT OR IGNORE INTO drive_folders (id, short_id, name, folder_path)
+    VALUES (?, ?, ?, ?)
   `);
   const insertCacheStmt = db.prepare(`
     INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
@@ -173,13 +178,14 @@ const migrateOldDriveCacheIfNeeded = (): void => {
       const mimeType = file.mimeType;
       const folderId = file.folderId ?? 'LEGACY_ROOT';
       const folderName = file.folderName ?? 'Legacy Root';
+      const folderPath = file.folderPath ?? 'root';
 
       // New schema requires all NOT NULL columns.
       if (!driveId || !name || !createdTime || !mimeType || !folderId) continue;
 
       const shortId = computeShortIdWithCollision(driveId);
       const folderShortId = computeFolderShortIdWithCollision(folderId);
-      insertStmt.run(folderId, folderShortId, folderName);
+      insertStmt.run(folderId, folderShortId, folderName, folderPath);
       insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
     }
   });
@@ -238,8 +244,8 @@ export const dbCache = {
     const normalizedFiles: DriveFile[] = files as DriveFile[];
 
     const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_folders (id, short_id, name)
-      VALUES (?, ?, ?)
+      INSERT OR IGNORE INTO drive_folders (id, short_id, name, folder_path)
+      VALUES (?, ?, ?, ?)
     `);
     const insertCacheStmt = db.prepare(`
       INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
@@ -257,12 +263,13 @@ export const dbCache = {
         const mimeType = file.mimeType;
         const folderId = file.folderId;
         const folderName = file.folderName ?? file.folderId;
+        const folderPath = file.folderPath ?? 'root';
 
         if (!driveId || !name || !createdTime || !mimeType || !folderId || !folderName) continue;
 
         const shortId = computeShortIdWithCollision(driveId);
         const folderShortId = computeFolderShortIdWithCollision(folderId);
-        insertStmt.run(folderId, folderShortId, folderName);
+        insertStmt.run(folderId, folderShortId, folderName, folderPath);
         insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
       }
 
@@ -287,7 +294,8 @@ export const dbCache = {
           dc.mimeType,
           dc.createdTime,
           dc.folder_id AS folderId,
-          df.name AS folderName
+          df.name AS folderName,
+          df.folder_path AS folderPath
         FROM drive_cache dc
         LEFT JOIN drive_folders df ON df.id = dc.folder_id
       `)
@@ -302,6 +310,7 @@ export const dbCache = {
       createdTime: row.createdTime,
       folderId: row.folderId,
       folderName: row.folderName,
+      folderPath: row.folderPath,
     }));
 
     return files as unknown as T;
@@ -328,7 +337,8 @@ export const dbCache = {
           dc.mimeType,
           dc.createdTime,
           dc.folder_id AS folderId,
-          df.name AS folderName
+          df.name AS folderName,
+          df.folder_path AS folderPath
         FROM drive_cache dc
         LEFT JOIN drive_folders df ON df.id = dc.folder_id
         WHERE dc.name LIKE ? COLLATE NOCASE
@@ -342,6 +352,7 @@ export const dbCache = {
       createdTime: row.createdTime,
       folderId: row.folderId,
       folderName: row.folderName,
+      folderPath: row.folderPath,
     }));
   },
 
@@ -362,7 +373,8 @@ export const dbCache = {
           dc.mimeType,
           dc.createdTime,
           dc.folder_id AS folderId,
-          df.name AS folderName
+          df.name AS folderName,
+          df.folder_path AS folderPath
         FROM drive_cache dc
         LEFT JOIN drive_folders df ON df.id = dc.folder_id
         WHERE df.short_id = ?
@@ -376,6 +388,7 @@ export const dbCache = {
       createdTime: row.createdTime,
       folderId: row.folderId,
       folderName: row.folderName,
+      folderPath: row.folderPath,
     }));
   },
 

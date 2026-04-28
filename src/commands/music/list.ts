@@ -96,17 +96,27 @@ const listCommand: Command = {
       }
 
       // 1. Prepare the Data based on Subcommand
-      let displayItems: { id: string; name: string; date: number }[] = [];
+      let displayItems: { id: string; name: string; date: number; path?: string; parent?: string }[] = [];
 
       if (subcommand === "folders") {
-        const folderMap = new Map<string, { id: string; name: string; latest: number; oldest: number }>();
+        const folderMap = new Map<string, { id: string; name: string; latest: number; oldest: number; path: string; parent: string }>();
         for (const file of allFiles) {
           if (!file.folderId) continue;
           const existing = folderMap.get(file.folderId);
           const time = file.createdTime ? new Date(file.createdTime).getTime() : 0;
+          const folderPath = file.folderPath ?? "root";
+          const pathParts = folderPath.split("/").filter(Boolean);
+          const parent = pathParts.length <= 1 ? "root" : pathParts[pathParts.length - 2];
 
           if (!existing) {
-            folderMap.set(file.folderId, { id: file.folderId, name: file.folderName ?? "Unknown", latest: time, oldest: time || Infinity });
+            folderMap.set(file.folderId, {
+              id: file.folderId,
+              name: file.folderName ?? "Unknown",
+              latest: time,
+              oldest: time || Infinity,
+              path: folderPath,
+              parent
+            });
           } else {
             existing.latest = Math.max(existing.latest, time);
             if (time > 0) existing.oldest = Math.min(existing.oldest, time);
@@ -115,7 +125,9 @@ const listCommand: Command = {
         displayItems = [...folderMap.values()].map(f => ({
           id: f.id,
           name: f.name,
-          date: sort === "date_asc" ? f.oldest : f.latest
+          date: sort === "date_asc" ? f.oldest : f.latest,
+          path: f.path,
+          parent: f.parent
         }));
       } else {
         displayItems = allFiles.map(f => ({
@@ -163,7 +175,7 @@ const listCommand: Command = {
           rows.push(currentRow);
           currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
         }
-        return `${globalIndex}. **${item.name}** (\`${shortId}\`)`;
+        return `${globalIndex}. **${item.name}** (\`${shortId}\`) ${subcommand === "folders" ? "- path: " + (item.path ?? "root") : ''}`;
       }).join("\n");
 
       if (currentRow.components.length > 0) rows.push(currentRow);

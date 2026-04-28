@@ -23,7 +23,7 @@ export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile
 
   await fetchFolderName(folderId);
 
-  const crawl = async (currentFolderId: string): Promise<void> => {
+  const crawl = async (currentFolderId: string, currentPath: string): Promise<void> => {
     let pageToken: string | undefined = undefined;
 
     do {
@@ -39,7 +39,9 @@ export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile
       for (const item of items) {
         if (item.mimeType === 'application/vnd.google-apps.folder') {
           folderNames.set(item.id, item.name ?? item.id);
-          await crawl(item.id);
+          const childName = item.name ?? item.id;
+          const childPath = currentPath === 'root' ? `root/${childName}` : `${currentPath}/${childName}`;
+          await crawl(item.id, childPath);
         } else {
           allFiles.push({
             id: item.id,
@@ -48,6 +50,7 @@ export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile
             mimeType: item.mimeType,
             folderId: currentFolderId,
             folderName: folderNames.get(currentFolderId) ?? currentFolderId,
+            folderPath: currentPath,
           });
         }
       }
@@ -56,6 +59,6 @@ export const fetchAllMp3sRecursive = async (folderId: string): Promise<DriveFile
     } while (pageToken);
   }
 
-  await crawl(folderId);
+  await crawl(folderId, 'root');
   return allFiles;
 }
