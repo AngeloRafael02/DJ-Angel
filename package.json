@@ -44,17 +44,16 @@
     "pm2:logrotate:configure": "pm2 set pm2-logrotate:max_size 10M && pm2 set pm2-logrotate:retain 7 && pm2 set pm2-logrotate:compress true"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
     "discord.js": "^14.26.2",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "google-auth-library": "^10.6.2",
     "googleapis": "^171.4.0",
     "lavalink-client": "^2.9.9",
+    "mongodb": "^7.2.0",
     "pm2": "^6.0.14"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.2",
     "tsx": "^4.21.0",

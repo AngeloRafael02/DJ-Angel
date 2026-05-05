@@ -1,52 +1,36 @@
 /**
- * Thie File Handles initialization of Database Tables
+ * This file handles initialization of MongoDB collections used by the app.
  */
 
-import { db, METADATA_KEYS } from '../core/db-instance.js';
+import {
+  metadataCollection,
+  guildSettingsCollection,
+  driveCacheCollection,
+  driveFoldersCollection,
+} from '../core/db-instance.js';
 
-export const ensureMetadataTable = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS metadata (
-      key TEXT PRIMARY KEY,
-      expiry INTEGER NOT NULL
-    )
-  `);
+export const METADATA_KEYS = {
+  DRIVE_CACHE: 'drive_cache',
+} as const;
 
-  db.prepare(
-    'INSERT OR IGNORE INTO metadata (key, expiry) VALUES (?, ?)'
-  ).run(METADATA_KEYS.DRIVE_CACHE, 0);
+export const ensureMetadataCollection = async (): Promise<void> => {
+  await metadataCollection.createIndex({ key: 1 }, { unique: true });
+  await metadataCollection.updateOne(
+    { key: METADATA_KEYS.DRIVE_CACHE },
+    { $setOnInsert: { expiry: 0 } },
+    { upsert: true }
+  );
 };
 
-export const createNewDriveCacheTable = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS drive_folders (
-      id TEXT PRIMARY KEY,
-      short_id TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      folder_path TEXT
-    )
-  `);
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS drive_cache (
-      short_id TEXT PRIMARY KEY,
-      id TEXT NOT NULL UNIQUE,
-      createdTime TEXT NOT NULL,
-      mimeType TEXT NOT NULL,
-      name TEXT NOT NULL,
-      folder_id TEXT NOT NULL,
-      FOREIGN KEY(folder_id) REFERENCES drive_folders(id)
-    )
-  `);
+export const ensureDriveCacheCollections = async (): Promise<void> => {
+  await driveFoldersCollection.createIndex({ short_id: 1 }, { unique: true, sparse: true });
+  await driveFoldersCollection.createIndex({ name: 1 });
+  await driveCacheCollection.createIndex({ _id: 1 });
+  await driveCacheCollection.createIndex({ id: 1 }, { unique: true });
+  await driveCacheCollection.createIndex({ folder_id: 1 });
+  await driveCacheCollection.createIndex({ name: 'text' });
 };
 
-export const ensureGuildSettingsTable = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS guild_settings (
-      guild_id TEXT PRIMARY KEY,
-      voice_channel_id TEXT,
-      text_channel_id TEXT,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+export const ensureGuildSettingsTable = async (): Promise<void> => {
+  await guildSettingsCollection.createIndex({ guild_id: 1 }, { unique: true });
 };

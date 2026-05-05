@@ -40,14 +40,14 @@ const searchCommand: Command = {
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      let allFiles = dbCache.get<DriveFile[]>(guildId);
+      let allFiles = await dbCache.get<DriveFile[]>(guildId);
 
       if (!allFiles) {
         allFiles = await fetchAllMp3sRecursive(folderId);
-        dbCache.set(guildId, allFiles);
+        await dbCache.set(guildId, allFiles);
       }
 
-      const matches = dbCache.search(query);
+      const matches = await dbCache.search(query);
 
       if (matches.length === 0) {
         await interaction.editReply(`No matches found for "**${query}**".`);
@@ -65,11 +65,13 @@ const searchCommand: Command = {
       const startIndex = (page - 1) * pageSize;
       const pageMatches = matches.slice(startIndex, startIndex + pageSize);
 
-      const list = pageMatches
-        .map((file, index) => `${startIndex + index + 1}. **${file.name}** (ID: \`${idRegistry.getOrCreateShortId(file.id)}\`)`)
-        .join("\n");
+      const list = await Promise.all(pageMatches.map(async (file, index) => {
+        const shortId = await idRegistry.getOrCreateShortId(file.id);
+        return `${startIndex + index + 1}. **${file.name}** (ID: \`${shortId}\`)`;
+      }));
+      const listText = list.join("\n");
 
-      const content = `🔎 **Search Results** for "**${query}**" (Page ${page}/${totalPages})\n\n${list}`;
+      const content = `🔎 **Search Results** for "**${query}**" (Page ${page}/${totalPages})\n\n${listText}`;
 
       await interaction.editReply(
         content.length > 2000 ? content.substring(0, 1990) + "..." : content

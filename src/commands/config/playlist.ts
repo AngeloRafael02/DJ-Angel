@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder,} from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, } from "discord.js";
 import { Command } from "../../interfaces.js";
 import { dbCache } from "../../database/search-cache.js";
 import { setPlaylistFolderId, getPlaylistFolderId } from "../../services/playlist.js";
@@ -64,7 +64,7 @@ const playlistCommand: Command = {
     if (sub === "get") {
       const folderId = getPlaylistFolderId(interaction.guild.id);
       const url = `https://drive.google.com/drive/folders/${folderId}`;
-      await interaction.editReply( `The current playlist folder is:\n${url}`);
+      await interaction.editReply(`The current playlist folder is:\n${url}`);
       return;
     }
 
@@ -78,10 +78,10 @@ const playlistCommand: Command = {
       }
 
       try {
-        setPlaylistFolderId(interaction.guild.id, folderId);
+        await setPlaylistFolderId(interaction.guild.id, folderId);
         const newFiles = await fetchAllMp3sRecursive(folderId);
 
-        dbCache.set(interaction.guild.id, newFiles);
+        await dbCache.set(interaction.guild.id, newFiles);
 
         await interaction.editReply(`✅ **Success!** Playlist updated.\nFound **${newFiles.length}** MP3 files.`);
       } catch (error) {
