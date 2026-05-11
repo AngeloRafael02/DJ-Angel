@@ -1,11 +1,20 @@
 /**
- * This file handles code for accesing Mp3 Files and Google Drive Folder metadata 
+ * This file handles code for accessing MP3 files and Google Drive folder metadata.
  */
 
 import crypto from 'crypto';
 import { DriveFile } from '../interfaces.js';
-import { db, METADATA_KEYS } from '../core/db-instance.js';
-import { createNewDriveCacheTable, ensureGuildSettingsTable, ensureMetadataTable } from './tables.js';
+import {
+  driveCacheCollection,
+  driveFoldersCollection,
+  metadataCollection,
+} from '../core/db-instance.js';
+import {
+  ensureDriveCacheCollections,
+  ensureGuildSettingsTable,
+  ensureMetadataCollection,
+  METADATA_KEYS,
+} from './tables.js';
 
 const baseShortId = (driveId: string): string =>
   crypto
@@ -15,21 +24,20 @@ const baseShortId = (driveId: string): string =>
     .substring(0, 6)
     .toUpperCase();
 
-export const computeShortIdWithCollision = (driveId: string): string => {
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const computeShortIdWithCollision = async (driveId: string): Promise<string> => {
   let shortId = baseShortId(driveId);
   let salt = 0;
 
-  const checkCollision = db.prepare(
-    'SELECT id FROM drive_cache WHERE short_id = ?'
-  );
-
   while (true) {
-    const collision = checkCollision.get(shortId) as { id: string } | undefined;
+    const collision = await driveCacheCollection.findOne({ _id: shortId });
     if (!collision || collision.id === driveId) break;
 
     shortId = crypto
       .createHash('md5')
-      .update(driveId + (salt++))
+      .update(driveId + salt++)
       .digest('hex')
       .substring(0, 6)
       .toUpperCase();
@@ -38,23 +46,20 @@ export const computeShortIdWithCollision = (driveId: string): string => {
   return shortId;
 };
 
-export const computeFolderShortIdWithCollision = (driveId: string): string => {
-  let salt = 0;
+export const computeFolderShortIdWithCollision = async (driveId: string): Promise<string> => {
   let shortId = baseShortId(driveId);
-  const checkCollision = db.prepare(`
-    SELECT id FROM drive_cache WHERE short_id = ?
-    UNION ALL
-    SELECT id FROM drive_folders WHERE short_id = ?
-    LIMIT 1
-  `);
+  let salt = 0;
 
   while (true) {
-    const collision = checkCollision.get(shortId, shortId) as { id: string } | undefined;
-    if (!collision || collision.id === driveId) break;
+    const folderCollision = await driveFoldersCollection.findOne({ short_id: shortId });
+    const fileCollision = await driveCacheCollection.findOne({ _id: shortId });
+
+    const collision = folderCollision || fileCollision;
+    if (!collision || collision._id === driveId || ('id' in collision && collision.id === driveId)) break;
 
     shortId = crypto
       .createHash('md5')
-      .update(driveId + (salt++))
+      .update(driveId + salt++)
       .digest('hex')
       .substring(0, 6)
       .toUpperCase();
@@ -63,389 +68,191 @@ export const computeFolderShortIdWithCollision = (driveId: string): string => {
   return shortId;
 };
 
-const getDriveCacheColumns = (): Array<{ name: string }> => {
-  return db
-    .prepare('PRAGMA table_info(drive_cache)')
-    .all() as Array<{ name: string }>;
+const getMetadataExpiry = async (): Promise<number> => {
+  const row = await metadataCollection.findOne({ key: METADATA_KEYS.DRIVE_CACHE });
+  return (row?.expiry as number) ?? 0;
 };
 
-const ensureDriveFoldersSchema = (): void => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS drive_folders (
-      id TEXT PRIMARY KEY,
-      short_id TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      folder_path TEXT
-    )
-  `);
+const clearDriveCache = async (): Promise<number> => {
+  const result = await driveCacheCollection.deleteMany({});
+  return result.deletedCount ?? 0;
+};
 
-  const columns = db
-    .prepare('PRAGMA table_info(drive_folders)')
-    .all() as Array<{ name: string }>;
-  const hasShortId = columns.some(c => c.name === 'short_id');
-  const hasFolderPath = columns.some(c => c.name === 'folder_path');
+const clearDriveFolders = async (): Promise<number> => {
+  const result = await driveFoldersCollection.deleteMany({});
+  return result.deletedCount ?? 0;
+};
 
-  if (!hasShortId) {
-    db.exec('ALTER TABLE drive_folders ADD COLUMN short_id TEXT');
+const ensureFresh = async (): Promise<void> => {
+  await ensureDriveCacheSchema();
+
+  const expiry = await getMetadataExpiry();
+  if (!expiry) return;
+
+  if (Date.now() > expiry) {
+    await clearDriveCache();
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry: 0 } }
+    );
   }
-  if (!hasFolderPath) {
-    db.exec('ALTER TABLE drive_folders ADD COLUMN folder_path TEXT');
-  }
+};
 
-  const rows = db
-    .prepare('SELECT id, short_id FROM drive_folders')
-    .all() as Array<{ id: string; short_id: string | null }>;
+export const ensureDriveCacheSchema = async (): Promise<void> => {
+  await ensureMetadataCollection();
+  await ensureGuildSettingsTable();
+  await ensureDriveCacheCollections();
+};
 
-  const updateShortIdStmt = db.prepare('UPDATE drive_folders SET short_id = ? WHERE id = ?');
+const enrichDriveFiles = async (rows: Array<any>): Promise<DriveFile[]> => {
+  if (!rows.length) return [];
 
-  const tx = db.transaction(() => {
-    for (const row of rows) {
-      if (row.short_id) continue;
-      const shortId = computeFolderShortIdWithCollision(row.id);
-      updateShortIdStmt.run(shortId, row.id);
-    }
+  const folderIds = [...new Set(rows.map((row) => row.folder_id))];
+  const folders = await driveFoldersCollection
+    .find({ _id: { $in: folderIds } })
+    .toArray();
+
+  const folderMap = new Map(folders.map((folder) => [folder._id, folder]));
+
+  return rows.map((row) => {
+    const folder = folderMap.get(row.folder_id);
+    return {
+      id: row.id,
+      name: row.name,
+      mimeType: row.mimeType,
+      createdTime: row.createdTime,
+      folderId: row.folder_id,
+      folderName: folder?.name,
+      folderPath: folder?.folder_path,
+    } as DriveFile;
   });
-
-  tx();
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_drive_folders_short_id ON drive_folders(short_id)');
 };
 
-const migrateOldDriveCacheIfNeeded = (): void => {
-  ensureDriveFoldersSchema();
+export const dbCache = {
+  async set(_guildId: string, files: any[], ttl: number = 5 * 60 * 1000): Promise<void> {
+    await ensureDriveCacheSchema();
 
-  const hasDriveCacheTable = !!db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='drive_cache'")
-    .get();
+    const expiry = Date.now() + ttl;
+    const normalizedFiles = files as DriveFile[];
 
-  if (!hasDriveCacheTable) return createNewDriveCacheTable();
+    await clearDriveCache();
+    await clearDriveFolders();
 
-  const columns = getDriveCacheColumns();
-  const hasShortId = columns.some(c => c.name === 'short_id');
-  const hasFileData = columns.some(c => c.name === 'file_data');
-  const hasFolderId = columns.some(c => c.name === 'folder_id');
-
-  if (hasShortId && !hasFileData && hasFolderId) return;
-
-  // Only attempt a JSON migration if we have the old `file_data` column.
-  if (!hasFileData) {
-    db.exec('DROP TABLE IF EXISTS drive_cache');
-    return createNewDriveCacheTable();
-  }
-
-  // Migrate the old table format:
-  // - drive_cache.guild_id, drive_cache.file_data(JSON array), drive_cache.expiry
-  // into:
-  // - drive_cache(short_id, id, createdTime, mimeType, name)
-  const oldRows = db.prepare('SELECT file_data, expiry FROM drive_cache').all() as Array<{
-    file_data: string;
-    expiry: number;
-  }>;
-
-  let expiryMax = 0;
-  const filesToInsert: DriveFile[] = [];
-
-  for (const row of oldRows) {
-    const expiry = Number(row.expiry ?? 0);
-    expiryMax = Math.max(expiryMax, expiry);
-
-    if (!row.file_data) continue;
-
-    try {
-      const parsed = JSON.parse(row.file_data) as DriveFile[];
-      if (Array.isArray(parsed)) filesToInsert.push(...parsed);
-    } catch {
-      // Ignore malformed cached JSON.
-    }
-  }
-
-  db.exec('DROP TABLE IF EXISTS drive_cache');
-  createNewDriveCacheTable();
-
-  const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_folders (id, short_id, name, folder_path)
-    VALUES (?, ?, ?, ?)
-  `);
-  const insertCacheStmt = db.prepare(`
-    INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  const tx = db.transaction(() => {
-    for (const file of filesToInsert) {
+    for (const file of normalizedFiles) {
       const driveId = file.id;
       const name = file.name;
       const createdTime = file.createdTime;
       const mimeType = file.mimeType;
-      const folderId = file.folderId ?? 'LEGACY_ROOT';
-      const folderName = file.folderName ?? 'Legacy Root';
+      const folderId = file.folderId;
+      const folderName = file.folderName ?? file.folderId;
       const folderPath = file.folderPath ?? 'root';
 
-      // New schema requires all NOT NULL columns.
-      if (!driveId || !name || !createdTime || !mimeType || !folderId) continue;
+      if (!driveId || !name || !createdTime || !mimeType || !folderId || !folderName) continue;
 
-      const shortId = computeShortIdWithCollision(driveId);
-      const folderShortId = computeFolderShortIdWithCollision(folderId);
-      insertStmt.run(folderId, folderShortId, folderName, folderPath);
-      insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
+      const shortId = await computeShortIdWithCollision(driveId);
+      const folderShortId = await computeFolderShortIdWithCollision(folderId);
+
+      await driveFoldersCollection.updateOne(
+        { _id: folderId },
+        {
+          $set: {
+            short_id: folderShortId,
+            name: folderName,
+            folder_path: folderPath,
+          },
+        },
+        { upsert: true }
+      );
+
+      await driveCacheCollection.updateOne(
+        { _id: shortId },
+        {
+          $set: {
+            id: driveId,
+            createdTime,
+            mimeType,
+            name,
+            folder_id: folderId,
+          },
+        },
+        { upsert: true }
+      );
     }
-  });
 
-  tx();
-
-  db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiryMax, METADATA_KEYS.DRIVE_CACHE);
-};
-
-export const ensureDriveCacheSchema = (): void => {
-  ensureMetadataTable();
-  ensureGuildSettingsTable();
-  migrateOldDriveCacheIfNeeded();
-};
-
-const getMetadataExpiry = (): number => {
-  const row = db
-    .prepare('SELECT expiry FROM metadata WHERE key = ?')
-    .get(METADATA_KEYS.DRIVE_CACHE) as { expiry: number } | undefined;
-
-  return row?.expiry ?? 0;
-};
-
-const clearDriveCache = (): number => {
-  const info = db.prepare('DELETE FROM drive_cache').run();
-  return info.changes;
-};
-
-const clearDriveFolders = (): number => {
-  const info = db.prepare('DELETE FROM drive_folders').run();
-  return info.changes;
-};
-
-const ensureFresh = (): void => {
-  ensureDriveCacheSchema();
-
-  const expiry = getMetadataExpiry();
-  if (!expiry) return;
-
-  if (Date.now() > expiry) {
-    clearDriveCache();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
-  }
-};
-
-export const dbCache = {
-  /**
-   * Save files to the database.
-   * TTL is tracked in `metadata.expiry`; `guildId` is ignored because the cache is global.
-   */
-  set(_guildId: string, files: any[], ttl: number = 5 * 60 * 1000): void {
-    ensureDriveCacheSchema();
-
-    const expiry = Date.now() + ttl;
-
-    const normalizedFiles: DriveFile[] = files as DriveFile[];
-
-    const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_folders (id, short_id, name, folder_path)
-      VALUES (?, ?, ?, ?)
-    `);
-    const insertCacheStmt = db.prepare(`
-      INSERT OR IGNORE INTO drive_cache (short_id, id, createdTime, mimeType, name, folder_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const tx = db.transaction(() => {
-      clearDriveCache();
-      clearDriveFolders();
-
-      for (const file of normalizedFiles) {
-        const driveId = file.id;
-        const name = file.name;
-        const createdTime = file.createdTime;
-        const mimeType = file.mimeType;
-        const folderId = file.folderId;
-        const folderName = file.folderName ?? file.folderId;
-        const folderPath = file.folderPath ?? 'root';
-
-        if (!driveId || !name || !createdTime || !mimeType || !folderId || !folderName) continue;
-
-        const shortId = computeShortIdWithCollision(driveId);
-        const folderShortId = computeFolderShortIdWithCollision(folderId);
-        insertStmt.run(folderId, folderShortId, folderName, folderPath);
-        insertCacheStmt.run(shortId, driveId, createdTime, mimeType, name, folderId);
-      }
-
-      db.prepare('UPDATE metadata SET expiry = ? WHERE key = ?').run(expiry, METADATA_KEYS.DRIVE_CACHE);
-    });
-
-    tx();
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry } },
+      { upsert: true }
+    );
   },
 
-  /**
-   * Retrieve all cached drive files if they exist and aren't expired.
-   */
-  get<T>(guildId: string): T | null {
-    void guildId; // cache is global
-    ensureFresh();
+  async get<T>(_guildId: string): Promise<T | null> {
+    await ensureFresh();
 
-    const rows = db
-      .prepare(`
-        SELECT
-          dc.id,
-          dc.name,
-          dc.mimeType,
-          dc.createdTime,
-          dc.folder_id AS folderId,
-          df.name AS folderName,
-          df.folder_path AS folderPath
-        FROM drive_cache dc
-        LEFT JOIN drive_folders df ON df.id = dc.folder_id
-      `)
-      .all() as DriveFile[];
-
+    const rows = await driveCacheCollection.find({}).toArray();
     if (!rows.length) return null;
 
-    const files = rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      mimeType: row.mimeType,
-      createdTime: row.createdTime,
-      folderId: row.folderId,
-      folderName: row.folderName,
-      folderPath: row.folderPath,
-    }));
-
+    const files = await enrichDriveFiles(rows);
     return files as unknown as T;
   },
 
-  /**
-   * Search cached drive files by `name` using SQL only.
-   * Uses: `WHERE name LIKE %query%`
-   */
-  search(
-    query: string
-  ): Array<DriveFile> {
-    ensureFresh();
+  async search(query: string): Promise<Array<DriveFile>> {
+    await ensureFresh();
 
     const q = query?.trim() ?? '';
     if (!q) return [];
 
-    const pattern = `%${q}%`;
-    const rows = db
-      .prepare(`
-        SELECT
-          dc.id,
-          dc.name,
-          dc.mimeType,
-          dc.createdTime,
-          dc.folder_id AS folderId,
-          df.name AS folderName,
-          df.folder_path AS folderPath
-        FROM drive_cache dc
-        LEFT JOIN drive_folders df ON df.id = dc.folder_id
-        WHERE dc.name LIKE ? COLLATE NOCASE
-      `)
-      .all(pattern) as DriveFile[];
-
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      mimeType: row.mimeType,
-      createdTime: row.createdTime,
-      folderId: row.folderId,
-      folderName: row.folderName,
-      folderPath: row.folderPath,
-    }));
+    const regex = new RegExp(escapeRegExp(q), 'i');
+    const rows = await driveCacheCollection.find({ name: regex }).toArray();
+    return enrichDriveFiles(rows);
   },
 
-  /**
-   * Retrieve cached drive files that belong to a folder short id.
-   */
-  getByFolderShortId(folderShortId: string): Array<DriveFile> {
-    ensureFresh();
+  async getByFolderShortId(folderShortId: string): Promise<Array<DriveFile>> {
+    await ensureFresh();
 
-    const shortId = folderShortId?.trim().toUpperCase() ?? '';
-    if (!shortId) return [];
+    const normalized = folderShortId?.trim().toUpperCase() ?? '';
+    if (!normalized) return [];
 
-    const rows = db
-      .prepare(`
-        SELECT
-          dc.id,
-          dc.name,
-          dc.mimeType,
-          dc.createdTime,
-          dc.folder_id AS folderId,
-          df.name AS folderName,
-          df.folder_path AS folderPath
-        FROM drive_cache dc
-        LEFT JOIN drive_folders df ON df.id = dc.folder_id
-        WHERE df.short_id = ?
-      `)
-      .all(shortId) as DriveFile[];
+    const folder = await driveFoldersCollection.findOne({ short_id: normalized });
+    if (!folder) return [];
 
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      mimeType: row.mimeType,
-      createdTime: row.createdTime,
-      folderId: row.folderId,
-      folderName: row.folderName,
-      folderPath: row.folderPath,
-    }));
+    const rows = await driveCacheCollection.find({ folder_id: folder._id }).toArray();
+    return enrichDriveFiles(rows);
   },
 
-  /**
-   * Returns folder name -> short_id mappings for debugging.
-   */
-  getFolderShortIdMappings(): Array<{ id: string; shortId: string; name: string }> {
-    ensureDriveCacheSchema();
-
-    const rows = db
-      .prepare(`
-        SELECT id, short_id, name
-        FROM drive_folders
-        ORDER BY name COLLATE NOCASE
-      `)
-      .all() as Array<{ id: string; short_id: string; name: string }>;
-
-    return rows.map(row => ({
-      id: row.id,
-      shortId: row.short_id,
-      name: row.name,
-    }));
+  async clear(_guildId: string): Promise<void> {
+    await ensureDriveCacheSchema();
+    await clearDriveCache();
+    await clearDriveFolders();
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry: 0 } }
+    );
   },
 
-  clear(guildId: string): void {
-    void guildId; // cache is global
-    ensureDriveCacheSchema();
-    clearDriveCache();
-    clearDriveFolders();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
-  },
+  async cleanup(): Promise<{ deleted: number }> {
+    await ensureDriveCacheSchema();
 
-  /**
-   * Clears the cache if it has expired and shrinks the database file size.
-   */
-  cleanup(): { deleted: number } {
-    ensureDriveCacheSchema();
-
-    const expiry = getMetadataExpiry();
+    const expiry = await getMetadataExpiry();
     if (!expiry || Date.now() <= expiry) return { deleted: 0 };
 
-    const deleted = clearDriveCache();
-    clearDriveFolders();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
-    db.exec('VACUUM');
+    const deleted = await clearDriveCache();
+    await clearDriveFolders();
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry: 0 } }
+    );
     return { deleted };
   },
 
-  /**
-   * Completely wipes the cache (Manual Override).
-   */
-  wipeAll(): number {
-    ensureDriveCacheSchema();
-    const deleted = clearDriveCache();
-    clearDriveFolders();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
-    db.exec('VACUUM');
+  async wipeAll(): Promise<number> {
+    await ensureDriveCacheSchema();
+    const deleted = await clearDriveCache();
+    await clearDriveFolders();
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry: 0 } }
+    );
     return deleted;
   },
 };

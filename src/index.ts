@@ -8,7 +8,7 @@ import { loadCommands } from "./core/load-commands.js";
 import { dbCache } from "./database/search-cache.js";
 import { streamRouter } from "./routes/stream.js";
 import { playDriveSong } from "./core/mp3-player.js";
-import { db } from "./core/db-instance.js";
+import { guildSettingsCollection } from "./core/db-instance.js";
 import { ensureGuildSettingsTable } from "./database/tables.js";
 
 dotenv.config();
@@ -71,7 +71,7 @@ async function bootstrap() {
         username: readyClient.user.username
       });
 
-      ensureGuildSettingsTable();
+      await ensureGuildSettingsTable();
     });
 
     client.on(Events.InteractionCreate, async (interaction) => {
@@ -107,7 +107,7 @@ async function bootstrap() {
       }
     });
 
-    lavalink.nodeManager.on("connect", (node) => {
+    lavalink.nodeManager.on("connect", async (node) => {
       console.log(`✅ Lavalink Node "${node.id}" connected!`);
 
       if (!canAutoJoinSavedChannels) {
@@ -115,8 +115,7 @@ async function bootstrap() {
         return;
       }
 
-      const stmt = db.prepare("SELECT * FROM guild_settings");
-      const allSettings = stmt.all() as { guild_id: string, voice_channel_id: string, text_channel_id: string }[];
+      const allSettings = await guildSettingsCollection.find({}).toArray() as { guild_id: string, voice_channel_id: string, text_channel_id: string }[];
 
       for (const settings of allSettings) {
         if (!settings.voice_channel_id) continue;
@@ -178,7 +177,7 @@ bootstrap()
 
 const THREE_HOURS = 3 * 60 * 60 * 1000;
 
-setInterval(() => {
-  const { deleted } = dbCache.cleanup();
+setInterval(async () => {
+  const { deleted } = await dbCache.cleanup();
   console.log(`[Scheduled Task] Cleaned up ${deleted} expired cache entries.`);
 }, THREE_HOURS);

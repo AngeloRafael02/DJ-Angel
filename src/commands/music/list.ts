@@ -76,14 +76,14 @@ const listCommand: Command = {
     const folderId = interaction.guildId ? getPlaylistFolderId(interaction.guildId) : DEFAULT_FOLDER_ID;
 
     try {
-      let allFiles = dbCache.get<DriveFile[]>(guildId);
+      let allFiles = await dbCache.get<DriveFile[]>(guildId);
       if (!allFiles) {
         allFiles = await fetchAllMp3sRecursive(folderId);
-        dbCache.set(guildId, allFiles, 60 * 60 * 1000);
+        await dbCache.set(guildId, allFiles, 60 * 60 * 1000);
       }
 
       if (subcommand === "songs" && folderShortId) {
-        allFiles = dbCache.getByFolderShortId(folderShortId);
+        allFiles = await dbCache.getByFolderShortId(folderShortId);
       }
 
       if (allFiles.length === 0) {
@@ -160,30 +160,32 @@ const listCommand: Command = {
       const rows: ActionRowBuilder<ButtonBuilder>[] = [];
       let currentRow = new ActionRowBuilder<ButtonBuilder>();
 
-      const listText = pageItems.map((item, index) => {
-        const shortId = idRegistry.getOrCreateShortId(item.id);
-        const globalIndex = startIndex + index + 1;
+      const listText = (
+        await Promise.all(pageItems.map(async (item, index) => {
+          const shortId = await idRegistry.getOrCreateShortId(item.id);
+          const globalIndex = startIndex + index + 1;
 
-        const button = new ButtonBuilder()
-          .setCustomId(`play_${shortId}`)
-          .setLabel(`${globalIndex}`)
-          .setStyle(subcommand === "folders" ? ButtonStyle.Success : ButtonStyle.Secondary);
+          const button = new ButtonBuilder()
+            .setCustomId(`play_${shortId}`)
+            .setLabel(`${globalIndex}`)
+            .setStyle(subcommand === "folders" ? ButtonStyle.Success : ButtonStyle.Secondary);
 
-        if (currentRow.components.length < 5) {
-          currentRow.addComponents(button);
-        } else {
-          rows.push(currentRow);
-          currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
-        }
-        return `${globalIndex}. **${item.name}** (\`${shortId}\`) ${subcommand === "folders" ? "- path: " + (item.path ?? "root") : ''}`;
-      }).join("\n");
+          if (currentRow.components.length < 5) {
+            currentRow.addComponents(button);
+          } else {
+            rows.push(currentRow);
+            currentRow = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
+          }
+          return `${globalIndex}. **${item.name}** (\`${shortId}\`) ${subcommand === "folders" ? "- path: " + (item.path ?? "root") : ''}`;
+        }))
+      ).join("\n");
 
       if (currentRow.components.length > 0) rows.push(currentRow);
 
       // 5. Final Output
       const icon = subcommand === "folders" ? "📁 **Playlist Folders**" : "🎵 **Library**";
       const sortLabel = sort.replace("_", " ").toUpperCase();
-      const buttonHint =`Each numbered button corresponds to the same numbered ${subcommand} above. Click a button to play the ${subcommand.slice(0,-1)} or add it to the queue.`
+      const buttonHint = `Each numbered button corresponds to the same numbered ${subcommand} above. Click a button to play the ${subcommand.slice(0, -1)} or add it to the queue.`
 
       const content = `${icon} [${sortLabel}] (Page ${page}/${totalPages})\n\n${listText}\n\n${buttonHint}`;
 

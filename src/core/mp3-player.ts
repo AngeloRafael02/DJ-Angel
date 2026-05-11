@@ -30,7 +30,7 @@ export async function playDriveSong(
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    const resolved = idRegistry.resolveShortId(id.trim());
+    const resolved = await idRegistry.resolveShortId(id.trim());
     if (!resolved) {
       await interaction.editReply("Song not found in cache (it may have expired). Please refresh the library with `/scan`, then try again.");
       return;

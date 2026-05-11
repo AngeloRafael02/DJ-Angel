@@ -25,10 +25,10 @@ const cleanCacheCommand: Command = {
 
     try {
       if (mode === "all") {
-        const count = dbCache.wipeAll();
+        const count = await dbCache.wipeAll();
         await interaction.editReply(`🧹 **Cache Wiped.** Removed ${count} server lists. The next \`/list\` call will fetch fresh data.`);
       } else {
-        const { deleted } = dbCache.cleanup();
+        const { deleted } = await dbCache.cleanup();
         await interaction.editReply(`✨ **Maintenance Complete.** Removed ${deleted} expired entries and optimized the database file.`);
       }
     } catch (error) {

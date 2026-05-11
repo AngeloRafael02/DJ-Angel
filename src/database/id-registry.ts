@@ -1,30 +1,33 @@
 /**
- * This file handles code for accessing file/folder IDs and their 
- * shortened version (stored in the database)
+ * This file handles code for accessing file/folder IDs and their
+ * shortened version using MongoDB.
  */
 
 import { ensureDriveCacheSchema, computeShortIdWithCollision } from './search-cache.js';
-import { db, METADATA_KEYS } from '../core/db-instance.js';
+import {
+  driveCacheCollection,
+  driveFoldersCollection,
+  metadataCollection,
+} from '../core/db-instance.js';
+import { METADATA_KEYS } from './tables.js';
 
-ensureDriveCacheSchema();
-
-const getMetadataExpiry = (): number => {
-  const row = db
-    .prepare('SELECT expiry FROM metadata WHERE key = ?')
-    .get(METADATA_KEYS.DRIVE_CACHE) as { expiry: number } | undefined;
-
-  return row?.expiry ?? 0;
+const getMetadataExpiry = async (): Promise<number> => {
+  const row = await metadataCollection.findOne({ key: METADATA_KEYS.DRIVE_CACHE });
+  return (row?.expiry as number) ?? 0;
 };
 
-const ensureFresh = (): void => {
-  ensureDriveCacheSchema();
+const ensureFresh = async (): Promise<void> => {
+  await ensureDriveCacheSchema();
 
-  const expiry = getMetadataExpiry();
+  const expiry = await getMetadataExpiry();
   if (!expiry) return;
 
   if (Date.now() > expiry) {
-    db.prepare('DELETE FROM drive_cache').run();
-    db.prepare('UPDATE metadata SET expiry = 0 WHERE key = ?').run(METADATA_KEYS.DRIVE_CACHE);
+    await driveCacheCollection.deleteMany({});
+    await metadataCollection.updateOne(
+      { key: METADATA_KEYS.DRIVE_CACHE },
+      { $set: { expiry: 0 } }
+    );
   }
 };
 
@@ -34,13 +37,11 @@ export const idRegistry = {
    * @param driveId
    * @returns string
    */
-  getOrCreateShortId(driveId: string): string {
-    ensureFresh();
-    const existing = db
-      .prepare('SELECT short_id FROM drive_cache WHERE id = ?')
-      .get(driveId) as { short_id: string } | undefined;
+  async getOrCreateShortId(driveId: string): Promise<string> {
+    await ensureFresh();
 
-    if (existing) return existing.short_id;
+    const existing = await driveCacheCollection.findOne({ id: driveId });
+    if (existing) return existing._id;
 
     return computeShortIdWithCollision(driveId);
   },
@@ -50,35 +51,35 @@ export const idRegistry = {
   * @param shortId
   * @returns string | undefined
   */
-  resolveShortId(shortId: string): { type: 'song'; songs: Array<{ id: string; name: string }> } | { type: 'folder'; songs: Array<{ id: string; name: string }> } | undefined {
+  async resolveShortId(
+    shortId: string
+  ): Promise<{ type: 'song'; songs: Array<{ id: string; name: string }> } | { type: 'folder'; songs: Array<{ id: string; name: string }> } | undefined> {
     if (!shortId) return undefined;
-    ensureFresh();
+    await ensureFresh();
     const normalized = shortId.toUpperCase();
 
-    const songRow = db
-      .prepare('SELECT id, name FROM drive_cache WHERE short_id = ? LIMIT 1')
-      .get(normalized) as { id: string; name: string } | undefined;
-
+    const songRow = await driveCacheCollection.findOne({ _id: normalized });
     if (songRow) {
       return {
         type: 'song',
-        songs: [{ id: songRow.id, name: songRow.name }]
+        songs: [{ id: songRow.id, name: songRow.name }],
       };
     }
 
-    const folderRow = db
-      .prepare('SELECT id FROM drive_folders WHERE short_id = ? OR id = ? LIMIT 1')
-      .get(normalized, normalized) as { id: string } | undefined;
+    const folderRow = await driveFoldersCollection.findOne({
+      $or: [{ short_id: normalized }, { _id: normalized }],
+    });
 
     if (!folderRow) return undefined;
 
-    const folderSongs = db
-      .prepare('SELECT id, name FROM drive_cache WHERE folder_id = ? ORDER BY name COLLATE NOCASE')
-      .all(folderRow.id) as Array<{ id: string; name: string }>;
+    const folderSongs = await driveCacheCollection
+      .find({ folder_id: folderRow._id })
+      .sort({ name: 1 })
+      .toArray();
 
     return {
       type: 'folder',
-      songs: folderSongs
+      songs: folderSongs.map((song) => ({ id: song.id, name: song.name })),
     };
   }
 };

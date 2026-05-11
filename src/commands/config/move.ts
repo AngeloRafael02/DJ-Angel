@@ -2,7 +2,7 @@ import { ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlags
 import { Command } from "../../interfaces.js";
 import { isAuthorized } from "../../utils/auth.js";
 import { lavalink } from "../../index.js";
-import { db } from "../../core/db-instance.js";
+import { guildSettingsCollection } from "../../core/db-instance.js";
 
 const moveCommand: Command = {
   cooldown: 5,
@@ -73,15 +73,17 @@ const moveCommand: Command = {
         ? `Moved to ${channel}. Continuing playback of **${queueCount}** tracks.`
         : `Joined ${channel}. Ready to play!`;
 
-      const saveStmt = db.prepare(`
-          INSERT INTO guild_settings (guild_id, voice_channel_id, text_channel_id)
-          VALUES (?, ?, ?)
-          ON CONFLICT(guild_id) DO UPDATE SET 
-              voice_channel_id = excluded.voice_channel_id,
-              text_channel_id = excluded.text_channel_id
-      `);
-
-      saveStmt.run(interaction.guildId, channel.id, interaction.channelId);
+      await guildSettingsCollection.updateOne(
+        { guild_id: interaction.guildId },
+        {
+          $set: {
+            voice_channel_id: channel.id,
+            text_channel_id: interaction.channelId,
+            updated_at: new Date(),
+          },
+        },
+        { upsert: true }
+      );
 
       await interaction.editReply(response);
 

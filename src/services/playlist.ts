@@ -41,13 +41,13 @@ export const getPlaylistFolderId = (guildId: string): string => {
 /**
  * Set the Google Drive folder ID for the playlist in this guild.
  */
-export const setPlaylistFolderId = (guildId: string, folderId: string): void => {
+export const setPlaylistFolderId = async (guildId: string, folderId: string): Promise<void> => {
   const store = loadStore();
 
   if (store[guildId] !== folderId) {
     store[guildId] = folderId;
     saveStore(store);
 
-    dbCache.clear(guildId);
+    await dbCache.clear(guildId);
   }
 }
