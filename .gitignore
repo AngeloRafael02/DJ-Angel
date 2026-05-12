@@ -28,3 +28,6 @@ playlist-store.json
 cache.db
 cache.db-shm
 cache.db-wal
+
+
+dist/

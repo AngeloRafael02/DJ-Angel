@@ -1,0 +1,24 @@
+# DJ-Angel: Discord bot + Express audio proxy.
+# MongoDB and Lavalink are expected to be reachable via CONNECTION_STRING / LAVALINK_* (often on the host or other containers).
+#
+# Build and run:
+#   docker compose up -d --build
+#
+# Google service account JSON must be mounted (see volumes). Do not bake secrets into the image.
+
+services:
+  dj-angel:
+    build: .
+    image: dj-angel:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # If Lavalink runs on your machine and the bot is in Docker Desktop, use host.docker.internal.
+      # LAVALINK_HOST: host.docker.internal
+      STREAM_PORT: ${STREAM_PORT:-3001}
+    ports:
+      - "${STREAM_PORT:-3001}:${STREAM_PORT:-3001}"
+    volumes:
+      - ./dj-angel-bot.json:/app/dj-angel-bot.json:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

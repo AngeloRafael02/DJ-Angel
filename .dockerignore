@@ -1,0 +1,12 @@
+node_modules
+dist
+npm-debug.log*
+logs
+.git
+.gitignore
+.cursor
+*.md
+.env
+.env.*
+ecosystem.config.cjs
+dj-angel-bot.json
