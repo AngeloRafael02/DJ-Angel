@@ -3,11 +3,11 @@
 ## Unfinished
 - /search and /playlist take too long to register, fix bottleneck
 - /mode config to switch between play-all-then-loop, play-current-song-in loop, current queue system - In Speculation
-- add tag for latest build before merging 'dockerMigrate' branch
 - Migrate from using MP2 + VM to Docker
   - Migrate from 'better-sqlite3' to 'MongoDB Atlas' as setup in Docker - DONE
   - Migrate from local Lavalink to Cloud Provider ([Kerit Cloud](https://kerit.cloud/lavalink), [Heaven Cloud](https://heavencloud.in/lavalink),[Square Cloud](https://docs.squarecloud.app/en/tutorials/how-to-create-your-lavalink-server), etc. )
-  - Dockerize Source code (also create Dockerfile and docker-compose.yml)
+  - Dockerize Source code (create Dockerfile and docker-compose.yml, etc.) - DONE
+- create automation solution to run docker compose -> docker push when git push to main is executed
 
 ## Finished
 - Make Bot access a Public Google Drive Folder - DONE
